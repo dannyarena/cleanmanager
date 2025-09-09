@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ui/dialog'
 import { apiService } from '../services/api'
 import { Site, Client, TableColumn, SearchFilters } from '../types'
 import SiteModal from '../components/sites/SiteModal'
+import ChecklistModal from '../components/sites/ChecklistModal'
 import { debounce, formatDate } from '../lib/utils'
 
 export function Siti() {
@@ -23,6 +24,8 @@ export function Siti() {
   const [deleting, setDeleting] = useState(false)
   const [siteModalOpen, setSiteModalOpen] = useState(false)
   const [editingSite, setEditingSite] = useState<Site | null>(null)
+  const [checklistOpen, setChecklistOpen] = useState(false)
+  const [checklistSiteId, setChecklistSiteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -161,7 +164,7 @@ export function Siti() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => console.log('Edit checklist:', site.id)}
+            onClick={() => { setChecklistSiteId(site.id); setChecklistOpen(true) }}
             title="Gestisci checklist"
           >
             <CheckSquare className="w-4 h-4" />
@@ -283,6 +286,19 @@ export function Siti() {
         onCreated={(created) => setSites(prev => [created, ...prev])}
         onUpdated={(updated) => setSites(prev => prev.map(s => s.id === updated.id ? updated : s))}
       />
+      {checklistSiteId && (
+        <ChecklistModal
+          open={checklistOpen}
+          onClose={() => { setChecklistOpen(false); setChecklistSiteId(null) }}
+          siteId={checklistSiteId}
+          onSaved={(items) => {
+            // update site checklist count in table
+            setSites(prev => prev.map(s => s.id === checklistSiteId ? { ...s, checklist: items } : s))
+            setChecklistOpen(false)
+            setChecklistSiteId(null)
+          }}
+        />
+      )}
     </div>
   )
 }
