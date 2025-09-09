@@ -6,6 +6,7 @@ import { Table } from '../components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { EmptyState } from '../components/ui/empty-state'
 import { ConfirmDialog } from '../components/ui/dialog'
+import { NewClientModal } from '../components/clients/NewClientModal'
 import { apiService } from '../services/api'
 import { Client, TableColumn, SearchFilters } from '../types'
 import { debounce, formatDate } from '../lib/utils'
@@ -18,6 +19,7 @@ export function Clienti() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null })
   const [deleting, setDeleting] = useState(false)
+  const [showNewClientModal, setShowNewClientModal] = useState(false)
 
   useEffect(() => {
     loadClients()
@@ -153,7 +155,7 @@ export function Clienti() {
           <h1 className="text-2xl font-bold text-gray-900">Clienti</h1>
           <p className="text-gray-600">Gestisci i tuoi clienti aziendali</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowNewClientModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Nuovo Cliente
         </Button>
@@ -216,6 +218,13 @@ export function Clienti() {
         description={`Sei sicuro di voler eliminare il cliente "${deleteDialog.client?.name}"? Questa azione non può essere annullata.`}
         onConfirm={handleDelete}
         loading={deleting}
+      />
+
+      {/* New client modal */}
+      <NewClientModal
+        open={showNewClientModal}
+        onClose={() => setShowNewClientModal(false)}
+        onCreated={(client) => setClients(prev => [client, ...prev])}
       />
     </div>
   )
