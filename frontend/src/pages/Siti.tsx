@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import { ConfirmDialog } from '../components/ui/dialog'
 import { apiService } from '../services/api'
 import { Site, Client, TableColumn, SearchFilters } from '../types'
+import SiteModal from '../components/sites/SiteModal'
 import { debounce, formatDate } from '../lib/utils'
 
 export function Siti() {
@@ -20,6 +21,8 @@ export function Siti() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; site: Site | null }>({ open: false, site: null })
   const [deleting, setDeleting] = useState(false)
+  const [siteModalOpen, setSiteModalOpen] = useState(false)
+  const [editingSite, setEditingSite] = useState<Site | null>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -67,20 +70,26 @@ export function Siti() {
   const handleSort = (key: string, direction: 'asc' | 'desc') => {
     setSortKey(key)
     setSortDirection(direction)
-    
+    const getValue = (obj: any, keyStr: string) => {
+      if (keyStr.includes('.')) return keyStr.split('.').reduce((o: any, k: string) => (o ?? {})[k], obj as any)
+      return (obj as any)[keyStr]
+    }
+
     const sortedSites = [...sites].sort((a, b) => {
-      const aValue = key.includes('.') 
-        ? key.split('.').reduce((obj, k) => obj?.[k], a)
-        : a[key as keyof Site]
-      const bValue = key.includes('.') 
-        ? key.split('.').reduce((obj, k) => obj?.[k], b)
-        : b[key as keyof Site]
-      
+      const aRaw = getValue(a, key)
+      const bRaw = getValue(b, key)
+      const aValue = aRaw ?? ''
+      const bValue = bRaw ?? ''
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      }
+
       if (aValue < bValue) return direction === 'asc' ? -1 : 1
       if (aValue > bValue) return direction === 'asc' ? 1 : -1
       return 0
     })
-    
+
     setSites(sortedSites)
   }
 
@@ -119,7 +128,7 @@ export function Siti() {
       key: 'client.name',
       label: 'Cliente',
       sortable: true,
-      render: (value, site) => (
+      render: (_, site) => (
         <div>
           <div className="font-medium text-gray-900">{site.client?.name || '-'}</div>
           {site.client?.email && (
@@ -131,7 +140,7 @@ export function Siti() {
     {
       key: 'checklist',
       label: 'Checklist',
-      render: (value, site) => (
+      render: (_, site) => (
         <div className="flex items-center space-x-1">
           <CheckSquare className="w-4 h-4 text-gray-400" />
           <span>{site.checklist?.length || 0} voci</span>
@@ -160,7 +169,7 @@ export function Siti() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => console.log('Edit site:', site.id)}
+            onClick={() => { setEditingSite(site); setSiteModalOpen(true); }}
             title="Modifica sito"
           >
             <Edit className="w-4 h-4" />
@@ -187,7 +196,7 @@ export function Siti() {
           <h1 className="text-2xl font-bold text-gray-900">Siti</h1>
           <p className="text-gray-600">Gestisci i siti dei tuoi clienti</p>
         </div>
-        <Button>
+  <Button onClick={() => setSiteModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Nuovo Sito
         </Button>
@@ -264,6 +273,13 @@ export function Siti() {
         description={`Sei sicuro di voler eliminare il sito "${deleteDialog.site?.name}"? Questa azione non può essere annullata.`}
         onConfirm={handleDelete}
         loading={deleting}
+      />
+      <SiteModal
+        open={siteModalOpen}
+        onClose={() => { setSiteModalOpen(false); setEditingSite(null); }}
+        site={editingSite}
+        onCreated={(created) => setSites(prev => [created, ...prev])}
+        onUpdated={(updated) => setSites(prev => prev.map(s => s.id === updated.id ? updated : s))}
       />
     </div>
   )
