@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import authRouter from './auth/authRouter';
+import clientsRoutes from './routes/clientsRoutes';
+import sitesRoutes from './routes/sitesRoutes';
+import operatorsRoutes from './routes/operatorsRoutes';
 
 // Carica le variabili d'ambiente
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -26,6 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/auth', authRouter);
+app.use('/api/clients', clientsRoutes);
+app.use('/api/sites', sitesRoutes);
+app.use('/api/operators', operatorsRoutes);
 
 // Route di benvenuto
 app.get('/api/welcome', (req, res) => {
@@ -53,7 +59,11 @@ app.get('/api/info', (req, res) => {
     endpoints: {
       welcome: '/api/welcome',
       info: '/api/info',
-      health: '/api/health'
+      health: '/api/health',
+      auth: '/auth',
+      clients: '/api/clients',
+      sites: '/api/sites',
+      operators: '/api/operators'
     }
   });
 });
@@ -72,7 +82,16 @@ app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint non trovato',
     message: `La route ${req.originalUrl} non esiste`,
-    availableEndpoints: ['/api/welcome', '/api/info', '/api/health']
+    availableEndpoints: [
+      '/api/welcome', 
+      '/api/info', 
+      '/api/health',
+      '/auth/login',
+      '/auth/me',
+      '/api/clients',
+      '/api/sites',
+      '/api/operators'
+    ]
   });
 });
 
