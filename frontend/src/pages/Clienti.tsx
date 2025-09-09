@@ -20,6 +20,14 @@ export function Clienti() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null })
   const [deleting, setDeleting] = useState(false)
   const [showClientModal, setShowClientModal] = useState(false)
+
+  // Apri modale se arrivo con ?action=create
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'create') {
+      setShowClientModal(true)
+    }
+  }, [])
   const [editingClient, setEditingClient] = useState<Client | null>(null)
 
   useEffect(() => {
