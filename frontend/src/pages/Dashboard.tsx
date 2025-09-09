@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Users, Building2, UserCheck, Plus } from 'lucide-react'
+import { Calendar, Users, Building2, UserCheck, Plus, Clock, AlertCircle, TrendingUp, CheckSquare } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 import { apiService } from '../services/api'
 import { Client, Site, User, Shift } from '../types'
 import { formatDate } from '../lib/utils'
@@ -12,6 +13,14 @@ interface DashboardStats {
   totalSites: number
   totalOperators: number
   todayShifts: number
+  pendingChecklists: number
+  checklistCompletion: number
+  trends: {
+    shiftsChange: number
+    operatorsChange: number
+    sitesChange: number
+    checklistChange: number
+  }
 }
 
 export function Dashboard() {
@@ -19,7 +28,15 @@ export function Dashboard() {
     totalClients: 0,
     totalSites: 0,
     totalOperators: 0,
-    todayShifts: 0
+    todayShifts: 0,
+    pendingChecklists: 0,
+    checklistCompletion: 0,
+    trends: {
+      shiftsChange: 0,
+      operatorsChange: 0,
+      sitesChange: 0,
+      checklistChange: 0
+    }
   })
   const [recentShifts, setRecentShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,7 +75,15 @@ export function Dashboard() {
         totalClients: clients.length,
         totalSites: sites.length,
         totalOperators: operators.length,
-        todayShifts: todayShifts.length
+        todayShifts: todayShifts.length,
+        pendingChecklists: 3, // Mock data - sarà calcolato dalle API
+        checklistCompletion: 89, // Mock data - sarà calcolato dalle API
+        trends: {
+          shiftsChange: 2,
+          operatorsChange: 1,
+          sitesChange: 3,
+          checklistChange: 5
+        }
       })
 
       setRecentShifts(upcomingShifts.slice(0, 5))
@@ -69,38 +94,55 @@ export function Dashboard() {
     }
   }
 
+  const getTrendIcon = (change: number) => {
+    if (change > 0) {
+      return <TrendingUp className="h-3 w-3 text-green-600" />
+    } else if (change < 0) {
+      return <TrendingUp className="h-3 w-3 text-red-600 rotate-180" />
+    }
+    return null
+  }
+
   const statsCards = [
-    {
-      title: 'Clienti',
-      value: stats.totalClients,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-      href: '/clienti'
-    },
-    {
-      title: 'Siti',
-      value: stats.totalSites,
-      icon: Building2,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-      href: '/siti'
-    },
-    {
-      title: 'Operatori',
-      value: stats.totalOperators,
-      icon: UserCheck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-      href: '/operatori'
-    },
     {
       title: 'Turni Oggi',
       value: stats.todayShifts,
       icon: Calendar,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      href: '/calendario',
+      trend: stats.trends.shiftsChange,
+      trendText: 'rispetto a ieri'
+    },
+    {
+      title: 'Operatori Attivi',
+      value: stats.totalOperators,
+      icon: Users,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      href: '/operatori',
+      trend: stats.trends.operatorsChange,
+      trendText: 'nuovo operatore'
+    },
+    {
+      title: 'Checklist da Fare',
+      value: stats.pendingChecklists,
+      icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
-      href: '/calendario'
+      href: '/calendario',
+      trend: null,
+      trendText: stats.pendingChecklists > 0 ? 'Richiedono attenzione' : 'Tutto completato!'
+    },
+    {
+      title: 'Completamento',
+      value: `${stats.checklistCompletion}%`,
+      icon: CheckSquare,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      href: '/calendario',
+      trend: stats.trends.checklistChange,
+      trendText: 'questa settimana'
     }
   ]
 
@@ -142,13 +184,25 @@ export function Dashboard() {
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-600">
                         {stat.title}
                       </p>
                       <p className="text-3xl font-bold text-gray-900">
                         {stat.value}
                       </p>
+                      <div className="flex items-center mt-2 text-sm">
+                        {stat.trend !== null && getTrendIcon(stat.trend)}
+                        <span className={`${stat.trend !== null ? 'ml-1' : ''} ${
+                          stat.trend === null 
+                            ? (stat.title === 'Checklist da Fare' && stats.pendingChecklists > 0 ? 'text-orange-600' : 'text-green-600')
+                            : stat.trend >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {stat.trend !== null && stat.trend > 0 ? '+' : ''}
+                          {stat.trend !== null ? `${stat.trend} ` : ''}
+                          {stat.trendText}
+                        </span>
+                      </div>
                     </div>
                     <div className={`p-3 rounded-full ${stat.bgColor}`}>
                       <Icon className={`w-6 h-6 ${stat.color}`} />

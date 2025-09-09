@@ -64,7 +64,7 @@ export function Table<T extends Record<string, any>>({
                   <th
                     key={key}
                     className={cn(
-                      'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider',
+                      'px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider',
                       isSortable && 'cursor-pointer hover:bg-gray-100 select-none'
                     )}
                     onClick={() => isSortable && handleSort(key)}
@@ -99,7 +99,10 @@ export function Table<T extends Record<string, any>>({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {data.map((item, index) => (
-              <tr key={item.id || index} className="hover:bg-gray-50">
+              <tr key={item.id || index} className={cn(
+                'transition-all duration-150 hover:bg-primary-50/50',
+                index % 2 === 1 && 'bg-gray-50/30'
+              )}>
                 {columns.map((column) => {
                   const key = typeof column.key === 'string' ? column.key : String(column.key)
                   const value = key.includes('.') 

@@ -1,61 +1,92 @@
-# 🧹 Clean Manager
+# 🧹 CleanManager
 
-Un'applicazione moderna per la gestione e pulizia, costruita con React, TypeScript e Vite.
+**Sistema di gestione turni e operatori per aziende di pulizie**
 
-## 🚀 Caratteristiche
+CleanManager è un'applicazione web completa per la gestione di turni, operatori, clienti e siti per aziende di servizi di pulizia. Il sistema supporta multi-tenancy, ruoli utente differenziati e gestione completa delle attività operative.
 
-- ⚡ **Vite** - Build tool veloce e moderno
-- ⚛️ **React 18** - Libreria UI con le ultime funzionalità
-- 🔷 **TypeScript** - Tipizzazione statica per maggiore sicurezza
-- 🎨 **CSS Moderno** - Variabili CSS e design responsivo
-- 📝 **ESLint** - Linting per mantenere la qualità del codice
-- 🔧 **Configurazione pronta** - Setup completo per iniziare subito
+## 🚀 Avvio Rapido
 
-## 📋 Prerequisiti
+### Prerequisiti
+- Node.js 18+ e npm/pnpm
+- PostgreSQL (opzionale, usa SQLite di default)
+- Docker (opzionale, per PostgreSQL)
 
-Assicurati di avere installato:
+### Avvio con Script Automatico
+```powershell
+# Avvia tutto (database, backend, frontend)
+.\start.ps1
 
-- [Node.js](https://nodejs.org/) (versione 16 o superiore)
-- [npm](https://www.npmjs.com/) o [yarn](https://yarnpkg.com/)
-
-## 🛠️ Installazione
-
-1. Clona il repository:
-```bash
-git clone <url-del-repository>
-cd cleanmanager
+# Arresta tutti i servizi
+.\stop.ps1
 ```
 
-2. Installa le dipendenze:
+### Accesso all'Applicazione
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:4000
+- **Database**: PostgreSQL su porta 5432
+
+### Credenziali Demo
+| Ruolo | Email | Password |
+|-------|-------|----------|
+| Admin | admin@cleanmanager.demo | password123 |
+| Manager | manager@cleanmanager.demo | password123 |
+| Operatore 1 | operatore1@cleanmanager.demo | password123 |
+| Operatore 2 | operatore2@cleanmanager.demo | password123 |
+
+## 📋 Funzionalità Implementate (MVP)
+
+- **🔐 Autenticazione e Autorizzazione**
+  - Login con email/password, JWT tokens,
+  - Ruoli: Admin, Manager, Operatore
+  - Isolamento multi-tenant completo
+
+- **👥 Gestione Utenti e Operatori**
+  - Creazione e modifica operatori
+  - Assegnazione ruoli e permessi
+  - Badge colorati per ruoli
+
+- **🏢 Gestione Clienti e Siti**
+  - Anagrafica clienti completa
+  - Gestione siti per cliente
+  - Ricerca e filtri avanzati
+  - Sistema checklist per sito
+
+- **📅 Gestione Turni**
+  - Creazione turni singoli e ricorrenti
+  - Calendario settimanale interattivo
+  - Assegnazione operatori e siti
+  - Ricorrenze daily/weekly con gestione eccezioni
+
+- **📊 Dashboard e KPI**
+  - Turni oggi, operatori attivi
+  - Checklist da completare
+  - Statistiche e trend in tempo reale
+  - Attività recenti
+
+- **🎨 Design System Completo**
+  - Componenti UI riutilizzabili
+  - Hover effects e transizioni fluide
+  - Stati vuoti con illustrazioni SVG
+  - Tabelle con righe alternate
+  - Sistema di validazione unificato
+
+## 🛠️ Setup Manuale (Alternativo)
+
+### Backend
 ```bash
+cd backend
 npm install
-# oppure
-yarn install
-```
-
-## 🏃‍♂️ Avvio del progetto
-
-### Modalità sviluppo
-```bash
+npx prisma generate
+npx prisma db push
+npx prisma db seed
 npm run dev
-# oppure
-yarn dev
 ```
 
-L'applicazione sarà disponibile su [http://localhost:3000](http://localhost:3000)
-
-### Build per produzione
+### Frontend
 ```bash
-npm run build
-# oppure
-yarn build
-```
-
-### Anteprima build di produzione
-```bash
-npm run preview
-# oppure
-yarn preview
+cd frontend
+npm install
+npm run dev
 ```
 
 ## 🧪 Script disponibili
@@ -134,7 +165,6 @@ ESLint è configurato con regole per React e TypeScript per mantenere la qualit�
 
 ## 📝 Licenza
 
-Questo progetto è sotto licenza MIT. Vedi il file `LICENSE` per maggiori dettagli.
 
 ## 🆘 Supporto
 
