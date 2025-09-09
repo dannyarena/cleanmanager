@@ -1,0 +1,270 @@
+import React, { useEffect, useState } from 'react'
+import { Plus, Search, Edit, Trash2, MapPin, CheckSquare } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Table } from '../components/ui/table'
+import { Card, CardContent } from '../components/ui/card'
+import { EmptyState } from '../components/ui/empty-state'
+import { ConfirmDialog } from '../components/ui/dialog'
+import { apiService } from '../services/api'
+import { Site, Client, TableColumn, SearchFilters } from '../types'
+import { debounce, formatDate } from '../lib/utils'
+
+export function Siti() {
+  const [sites, setSites] = useState<Site[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const [sortKey, setSortKey] = useState<string>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; site: Site | null }>({ open: false, site: null })
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    loadInitialData()
+  }, [])
+
+  useEffect(() => {
+    const debouncedSearch = debounce(() => {
+      loadSites({ 
+        q: searchQuery,
+        clientId: selectedClientId || undefined
+      })
+    }, 300)
+
+    debouncedSearch()
+  }, [searchQuery, selectedClientId])
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true)
+      const [sitesData, clientsData] = await Promise.all([
+        apiService.getSites(),
+        apiService.getClients()
+      ])
+      setSites(sitesData)
+      setClients(clientsData)
+    } catch (error) {
+      console.error('Errore nel caricamento dati:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadSites = async (filters?: SearchFilters) => {
+    try {
+      setLoading(true)
+      const data = await apiService.getSites(filters)
+      setSites(data)
+    } catch (error) {
+      console.error('Errore nel caricamento siti:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSort = (key: string, direction: 'asc' | 'desc') => {
+    setSortKey(key)
+    setSortDirection(direction)
+    
+    const sortedSites = [...sites].sort((a, b) => {
+      const aValue = key.includes('.') 
+        ? key.split('.').reduce((obj, k) => obj?.[k], a)
+        : a[key as keyof Site]
+      const bValue = key.includes('.') 
+        ? key.split('.').reduce((obj, k) => obj?.[k], b)
+        : b[key as keyof Site]
+      
+      if (aValue < bValue) return direction === 'asc' ? -1 : 1
+      if (aValue > bValue) return direction === 'asc' ? 1 : -1
+      return 0
+    })
+    
+    setSites(sortedSites)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteDialog.site) return
+    
+    try {
+      setDeleting(true)
+      await apiService.deleteSite(deleteDialog.site.id)
+      setSites(sites.filter(s => s.id !== deleteDialog.site!.id))
+      setDeleteDialog({ open: false, site: null })
+    } catch (error) {
+      console.error('Errore nell\'eliminazione del sito:', error)
+      alert('Errore nell\'eliminazione del sito')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const columns: TableColumn<Site>[] = [
+    {
+      key: 'name',
+      label: 'Nome Sito',
+      sortable: true,
+      render: (value, site) => (
+        <div>
+          <div className="font-medium text-gray-900">{value}</div>
+          <div className="flex items-center text-sm text-gray-500 mt-1">
+            <MapPin className="w-3 h-3 mr-1" />
+            {site.address}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'client.name',
+      label: 'Cliente',
+      sortable: true,
+      render: (value, site) => (
+        <div>
+          <div className="font-medium text-gray-900">{site.client?.name || '-'}</div>
+          {site.client?.email && (
+            <div className="text-sm text-gray-500">{site.client.email}</div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'checklist',
+      label: 'Checklist',
+      render: (value, site) => (
+        <div className="flex items-center space-x-1">
+          <CheckSquare className="w-4 h-4 text-gray-400" />
+          <span>{site.checklist?.length || 0} voci</span>
+        </div>
+      )
+    },
+    {
+      key: 'createdAt',
+      label: 'Creato',
+      sortable: true,
+      render: (value) => formatDate(value)
+    },
+    {
+      key: 'actions',
+      label: 'Azioni',
+      render: (_, site) => (
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => console.log('Edit checklist:', site.id)}
+            title="Gestisci checklist"
+          >
+            <CheckSquare className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => console.log('Edit site:', site.id)}
+            title="Modifica sito"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeleteDialog({ open: true, site })}
+            className="text-red-600 hover:text-red-700"
+            title="Elimina sito"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    }
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Siti</h1>
+          <p className="text-gray-600">Gestisci i siti dei tuoi clienti</p>
+        </div>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          Nuovo Sito
+        </Button>
+      </div>
+
+      {/* Search and filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center space-x-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Cerca siti per nome o indirizzo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="w-64">
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="">Tutti i clienti</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results summary */}
+      {!loading && (
+        <div className="text-sm text-gray-600">
+          {sites.length === 0 
+            ? 'Nessun sito trovato'
+            : `${sites.length} sito${sites.length !== 1 ? 'i' : ''} trovato${sites.length !== 1 ? 'i' : ''}`
+          }
+        </div>
+      )}
+
+      {/* Table */}
+      {!loading && sites.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="Nessun sito trovato"
+          description={searchQuery || selectedClientId ? "Nessun sito corrisponde ai criteri di ricerca." : "Non hai ancora aggiunto nessun sito. Inizia creando il primo sito."}
+          action={!searchQuery && !selectedClientId ? {
+            label: "Aggiungi Sito",
+            onClick: () => console.log('Aggiungi sito')
+          } : undefined}
+        />
+      ) : (
+        <Table
+          data={sites}
+          columns={columns}
+          loading={loading}
+          onSort={handleSort}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+        />
+      )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, site: null })}
+        title="Elimina Sito"
+        description={`Sei sicuro di voler eliminare il sito "${deleteDialog.site?.name}"? Questa azione non può essere annullata.`}
+        onConfirm={handleDelete}
+        loading={deleting}
+      />
+    </div>
+  )
+}
