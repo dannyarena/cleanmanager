@@ -53,3 +53,87 @@ export interface OperatorResponse {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Tipi per i turni
+export interface QueryShiftsParams extends QueryParams {
+  from?: string; // Data inizio range (ISO string)
+  to?: string;   // Data fine range (ISO string)
+}
+
+export interface CreateShiftRequest {
+  title: string;
+  date: string; // ISO string
+  notes?: string;
+  siteIds?: string[];
+  operatorIds?: string[];
+  recurrence?: {
+    frequency: 'daily' | 'weekly';
+    interval: number;
+    startDate: string; // ISO string
+    endDate?: string;  // ISO string
+    count?: number;
+  };
+}
+
+export interface UpdateShiftRequest {
+  title?: string;
+  date?: string; // ISO string
+  notes?: string;
+  updateType?: 'single' | 'series'; // Per ricorrenze
+}
+
+export interface AssignSitesRequest {
+  siteIds: string[];
+}
+
+export interface AssignOperatorsRequest {
+  operatorIds: string[];
+}
+
+export interface ShiftResponse {
+  id: string;
+  title: string;
+  date: Date;
+  notes?: string;
+  tenantId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  sites: {
+    id: string;
+    name: string;
+    address: string;
+    client: {
+      id: string;
+      name: string;
+    };
+  }[];
+  operators: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    isManager: boolean;
+  }[];
+  recurrence?: {
+    id: string;
+    frequency: string;
+    interval: number;
+    startDate: Date;
+    endDate?: Date;
+    count?: number;
+  };
+  isRecurring: boolean;
+  _count: {
+    sites: number;
+    operators: number;
+  };
+}
+
+export interface OperatorConflict {
+  operatorId: string;
+  operatorName: string;
+  conflictingShift: {
+    id: string;
+    title: string;
+    date: Date;
+  };
+}
