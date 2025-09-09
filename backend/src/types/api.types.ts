@@ -137,3 +137,29 @@ export interface OperatorConflict {
     date: Date;
   };
 }
+
+// Tipi per le checklist
+export interface CheckItemRequest {
+  title: string;
+  description?: string;
+  order?: number;
+}
+
+export interface CheckItemResponse {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+}
+
+export interface ChecklistResponse {
+  id: string | null;
+  title: string;
+  siteId: string;
+  checkItems: CheckItemResponse[];
+}
+
+export interface UpdateChecklistRequest {
+  title: string;
+  checkItems: CheckItemRequest[];
+}

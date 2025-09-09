@@ -7,7 +7,9 @@ import {
   getSite,
   createSite,
   updateSite,
-  deleteSite
+  deleteSite,
+  getSiteChecklist,
+  updateSiteChecklist
 } from "../controllers/sitesController";
 
 const router = Router();
@@ -30,5 +32,11 @@ router.patch('/:id', requireAdminOrManager, updateSite);
 
 // DELETE /sites/:id - Elimina sito (solo Admin/Manager)
 router.delete('/:id', requireAdminOrManager, deleteSite);
+
+// GET /sites/:id/checklist - Recupera checklist per sito (tutti possono leggere)
+router.get('/:id/checklist', requireAuthenticated, getSiteChecklist);
+
+// PUT /sites/:id/checklist - Aggiorna checklist per sito (solo Admin/Manager)
+router.put('/:id/checklist', requireAdminOrManager, updateSiteChecklist);
 
 export default router;
