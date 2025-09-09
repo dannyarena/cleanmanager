@@ -190,9 +190,11 @@ export function Clienti() {
       {/* Results summary */}
       {!loading && (
         <div className="text-sm text-gray-600">
-          {clients.length === 0 
-            ? 'Nessun cliente trovato'
-            : `${clients.length} cliente${clients.length !== 1 ? 'i' : ''} trovato${clients.length !== 1 ? 'i' : ''}`
+          {clients.length === 0
+            ? 'Nessun cliente ancora'
+            : clients.length === 1
+              ? '1 cliente trovato'
+              : `${clients.length} clienti trovati`
           }
         </div>
       )}
