@@ -13,8 +13,6 @@ interface Props {
   onSaved?: (items: ChecklistItem[]) => void
 }
 
-const emptyNew = (order: number) => ({ title: '', description: '', required: false, order })
-
 const ChecklistModal: React.FC<Props> = ({ open, onClose, siteId, onSaved }) => {
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<Array<Partial<ChecklistItem> & { order: number }>>([])
@@ -56,12 +54,11 @@ const ChecklistModal: React.FC<Props> = ({ open, onClose, siteId, onSaved }) => 
   const handleSave = async () => {
     setLoading(true)
     try {
-      const payload: CreateChecklistItemRequest[] = items.map((it, idx) => ({
-        title: (it.title || '').trim(),
-        description: it.description,
-        required: !!it.required,
-        order: it.order ?? idx,
-      }))
+        const payload: CreateChecklistItemRequest[] = items.map((it, idx) => ({
+          title: (it.title || '').trim(),
+          description: it.description,
+          order: it.order ?? idx,
+        }))
 
       const result = await apiService.updateSiteChecklist(siteId, payload)
       onSaved?.(result)
@@ -99,10 +96,6 @@ const ChecklistModal: React.FC<Props> = ({ open, onClose, siteId, onSaved }) => 
                     <Textarea value={it.description || ''} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Descrizione (opzionale)" />
                   </div>
                   <div className="ml-4 flex flex-col items-end space-y-2">
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" checked={!!it.required} onChange={(e) => updateItem(idx, { required: e.target.checked })} />
-                      <span className="text-sm">Obbl.</span>
-                    </label>
                     <Button variant="ghost" onClick={() => removeItem(idx)} className="text-red-600">Rimuovi</Button>
                   </div>
                 </div>

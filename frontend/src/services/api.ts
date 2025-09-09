@@ -102,17 +102,63 @@ class ApiService {
   // Checklist per sito
   async getSiteChecklist(siteId: string): Promise<ChecklistItem[]> {
     const response = await authService.authenticatedFetch(`/sites/${siteId}/checklist`)
-    const data: ApiResponse<ChecklistItem[]> = await response.json()
-    return data.data
+    const json = await response.json();
+
+    // Backend returns either a wrapped { data: [...] } or an object { id, title, siteId, checkItems: [...] }
+    if (json?.data && Array.isArray(json.data)) {
+      return json.data
+    }
+
+    if (Array.isArray(json)) {
+      return json
+    }
+
+    if (json?.checkItems && Array.isArray(json.checkItems)) {
+      // Map backend CheckItem shape to frontend ChecklistItem shape (shallow)
+      return json.checkItems.map((it: any) => ({
+        id: it.id,
+        title: it.title,
+        description: it.description || undefined,
+        required: !!it.required,
+        order: it.order ?? 0,
+        siteId: json.siteId || siteId,
+        createdAt: it.createdAt,
+        updatedAt: it.updatedAt
+      }))
+    }
+
+    return []
   }
 
   async updateSiteChecklist(siteId: string, items: CreateChecklistItemRequest[]): Promise<ChecklistItem[]> {
     const response = await authService.authenticatedFetch(`/sites/${siteId}/checklist`, {
       method: 'PUT',
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ title: `Checklist for ${siteId}`, checkItems: items }),
     })
-    const data: ApiResponse<ChecklistItem[]> = await response.json()
-    return data.data
+    const json = await response.json();
+
+    if (json?.data && Array.isArray(json.data)) {
+      return json.data
+    }
+
+    if (Array.isArray(json)) {
+      return json
+    }
+
+    if (json?.checkItems && Array.isArray(json.checkItems)) {
+      return json.checkItems.map((it: any) => ({
+        id: it.id,
+        title: it.title,
+        description: it.description || undefined,
+        required: !!it.required,
+        order: it.order ?? 0,
+        siteId: json.siteId || siteId,
+        createdAt: it.createdAt,
+        updatedAt: it.updatedAt
+      }))
+    }
+
+    return []
   }
 
   // Operatori

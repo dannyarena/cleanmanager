@@ -55,7 +55,10 @@ export interface Site {
   createdAt: string
   updatedAt: string
   client?: Client
+  // Backend may return either a `checklists` array or an _count for checklists
   checklist?: ChecklistItem[]
+  checklists?: { id: string; title: string }[]
+  _count?: { checklists?: number; shiftSites?: number }
 }
 
 export interface CreateSiteRequest {
@@ -70,7 +73,6 @@ export interface ChecklistItem {
   id: string
   title: string
   description?: string
-  required: boolean
   order: number
   siteId: string
   createdAt: string
@@ -80,7 +82,6 @@ export interface ChecklistItem {
 export interface CreateChecklistItemRequest {
   title: string
   description?: string
-  required: boolean
   order: number
 }
 

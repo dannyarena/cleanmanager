@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Search, Edit, Trash2, MapPin, CheckSquare } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -45,11 +45,14 @@ export function Siti() {
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      const [sitesData, clientsData] = await Promise.all([
-        apiService.getSites(),
+      const [sitesDataRaw, clientsData] = await Promise.all([
+        apiService.getSites() as any,
         apiService.getClients()
       ])
-      setSites(sitesData)
+
+      // Backend may return either an array or a paginated object { data: Site[] }
+      const normalizedSites = Array.isArray(sitesDataRaw) ? sitesDataRaw : (sitesDataRaw?.data ?? [])
+      setSites(normalizedSites)
       setClients(clientsData)
     } catch (error) {
       console.error('Errore nel caricamento dati:', error)
@@ -61,8 +64,9 @@ export function Siti() {
   const loadSites = async (filters?: SearchFilters) => {
     try {
       setLoading(true)
-      const data = await apiService.getSites(filters)
-      setSites(data)
+  const dataRaw: any = await apiService.getSites(filters)
+  const normalized = Array.isArray(dataRaw) ? dataRaw : (dataRaw?.data ?? [])
+  setSites(normalized)
     } catch (error) {
       console.error('Errore nel caricamento siti:', error)
     } finally {
@@ -146,7 +150,8 @@ export function Siti() {
       render: (_, site) => (
         <div className="flex items-center space-x-1">
           <CheckSquare className="w-4 h-4 text-gray-400" />
-          <span>{site.checklist?.length || 0} voci</span>
+          {/* backend includes either checklists array or _count.checklists */}
+          <span>{(site.checklists?.length ?? site._count?.checklists ?? 0)} voci</span>
         </div>
       )
     },
