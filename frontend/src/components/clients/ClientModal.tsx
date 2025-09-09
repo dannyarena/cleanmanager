@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog'
-import { Input } from '../../components/ui/input'
-import { Textarea } from '../../components/ui/textarea'
-import { Button } from '../../components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog'
+import { Input } from '../ui/input'
+import { Textarea } from '../ui/textarea'
+import { Button } from '../ui/button'
 import { apiService } from '../../services/api'
 import { CreateClientRequest, Client } from '../../types'
 
@@ -14,7 +14,7 @@ interface Props {
   onUpdated?: (client: Client) => void
 }
 
-export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated, client, onUpdated }) => {
+export const ClientModal: React.FC<Props> = ({ open, onClose, onCreated, client, onUpdated }) => {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<CreateClientRequest>({ name: '', email: '', phone: '', address: '', notes: '' })
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +69,7 @@ export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated, clie
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent>
+  <DialogContent className="max-w-3xl p-12 max-h-[95vh]">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Modifica Cliente' : 'Nuovo Cliente'}</DialogTitle>
         </DialogHeader>
@@ -114,4 +114,4 @@ export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated, clie
   )
 }
 
-export default NewClientModal
+export default ClientModal
