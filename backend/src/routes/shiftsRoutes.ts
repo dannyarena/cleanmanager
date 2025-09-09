@@ -4,6 +4,7 @@ import { requireTenant } from "../auth/authMiddleware";
 import { requireAuthenticated, requireAdminOrManager } from "../middleware/roleMiddleware";
 import {
   getShifts,
+  getShiftById,
   createShift,
   updateShift,
   deleteShift,
@@ -19,6 +20,9 @@ router.use(requireTenant);
 
 // GET /shifts - Lista turni con generazione lazy ricorrenze (tutti possono leggere)
 router.get('/', requireAuthenticated, getShifts);
+
+// GET /shifts/:id - Recupera dettagli singolo turno (tutti gli utenti autenticati)
+router.get('/:id', requireAuthenticated, getShiftById);
 
 // POST /shifts - Crea turno singolo o ricorrente (solo Admin/Manager)
 router.post('/', requireAdminOrManager, createShift);

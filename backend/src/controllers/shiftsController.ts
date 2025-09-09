@@ -316,7 +316,7 @@ export const createShift: RequestHandler = async (req: Request, res: Response) =
     });
     
     // Recupera turno completo
-    const createdShift = await getShiftById(result.id, tenantId);
+    const createdShift = await getShiftByIdHelper(result.id, tenantId);
     
     return res.status(201).json({
       shift: createdShift,
@@ -399,7 +399,7 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
     }
     
     // Recupera turno aggiornato
-    const updatedShift = await getShiftById(id, tenantId);
+    const updatedShift = await getShiftByIdHelper(id, tenantId);
     
     return res.json(updatedShift);
   } catch (error) {
@@ -513,7 +513,7 @@ export const assignSites: RequestHandler = async (req: Request, res: Response) =
     });
     
     // Recupera turno aggiornato
-    const updatedShift = await getShiftById(id, tenantId);
+    const updatedShift = await getShiftByIdHelper(id, tenantId);
     
     return res.json(updatedShift);
   } catch (error) {
@@ -578,7 +578,7 @@ export const assignOperators: RequestHandler = async (req: Request, res: Respons
     });
     
     // Recupera turno aggiornato
-    const updatedShift = await getShiftById(id, tenantId);
+    const updatedShift = await getShiftByIdHelper(id, tenantId);
     
     return res.json({
       shift: updatedShift,
@@ -595,9 +595,9 @@ export const assignOperators: RequestHandler = async (req: Request, res: Respons
 // Funzioni helper
 
 /**
- * Recupera un turno completo per ID
+ * Recupera un turno completo per ID (funzione helper)
  */
-async function getShiftById(id: string, tenantId: string): Promise<ShiftResponse> {
+async function getShiftByIdHelper(id: string, tenantId: string): Promise<ShiftResponse> {
   const shift = await prisma.shift.findFirst({
     where: { id, tenantId },
     include: {
@@ -670,6 +670,177 @@ async function getShiftById(id: string, tenantId: string): Promise<ShiftResponse
     _count: shift._count
   };
 }
+
+/**
+ * GET /shifts/:id - Recupera dettagli di un singolo turno
+ */
+export const getShiftById: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = getTenantId(req);
+    
+    if (!tenantId) {
+      return res.status(401).json({ error: "Tenant ID mancante" });
+    }
+
+    // Cerca prima il turno master
+    let shift = await prisma.shift.findFirst({
+      where: {
+        id,
+        tenantId
+      },
+      include: {
+        shiftSites: {
+          include: {
+            site: {
+              include: {
+                client: {
+                  select: { id: true, name: true }
+                }
+              }
+            }
+          }
+        },
+        shiftOperators: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                isManager: true
+              }
+            }
+          }
+        },
+        shiftRecurrence: true,
+        _count: {
+          select: {
+            shiftSites: true,
+            shiftOperators: true
+          }
+        }
+      }
+    });
+
+    // Se non trovato e l'ID contiene un underscore, potrebbe essere un'occorrenza ricorrente
+    if (!shift && id.includes('_')) {
+      const [masterId, dateStr] = id.split('_');
+      const date = new Date(dateStr);
+      
+      // Trova il turno master
+      const masterShift = await prisma.shift.findFirst({
+        where: {
+          id: masterId,
+          tenantId
+        },
+        include: {
+          shiftSites: {
+            include: {
+              site: {
+                include: {
+                  client: {
+                    select: { id: true, name: true }
+                  }
+                }
+              }
+            }
+          },
+          shiftOperators: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  isManager: true
+                }
+              }
+            }
+          },
+          shiftRecurrence: true,
+          _count: {
+            select: {
+              shiftSites: true,
+              shiftOperators: true
+            }
+          }
+        }
+      });
+
+      if (masterShift && masterShift.shiftRecurrence) {
+        // Verifica che la data sia valida per questa ricorrenza
+        const recurrenceOptions = {
+          frequency: masterShift.shiftRecurrence.frequency,
+          interval: masterShift.shiftRecurrence.interval,
+          startDate: masterShift.shiftRecurrence.startDate,
+          endDate: masterShift.shiftRecurrence.endDate || undefined,
+          count: masterShift.shiftRecurrence.count || undefined
+        };
+        
+        const occurrences = RecurrenceService.generateOccurrences(
+          masterShift.date,
+          recurrenceOptions,
+          date,
+          new Date(date.getTime() + 24 * 60 * 60 * 1000) // +1 giorno
+        );
+
+        if (occurrences.length > 0) {
+          // Crea l'oggetto turno per l'occorrenza
+          shift = {
+            ...masterShift,
+            id,
+            date
+          };
+        }
+      }
+    }
+
+    if (!shift) {
+      return res.status(404).json({
+        error: 'Turno non trovato'
+      });
+    }
+
+    // Formatta la risposta
+    const response: ShiftResponse = {
+      id: shift.id,
+      title: shift.title,
+      date: shift.date,
+      notes: shift.notes,
+      tenantId: shift.tenantId,
+      createdAt: shift.createdAt,
+      updatedAt: shift.updatedAt,
+      sites: shift.shiftSites.map(ss => ({
+        id: ss.site.id,
+        name: ss.site.name,
+        address: ss.site.address,
+        client: ss.site.client
+      })),
+      operators: shift.shiftOperators.map(so => ({
+        id: so.user.id,
+        firstName: so.user.firstName,
+        lastName: so.user.lastName,
+        isManager: so.user.isManager
+      })),
+      recurrence: shift.shiftRecurrence ? {
+        id: shift.shiftRecurrence.id,
+        frequency: shift.shiftRecurrence.frequency.toLowerCase(),
+        interval: shift.shiftRecurrence.interval,
+        startDate: shift.shiftRecurrence.startDate,
+        endDate: shift.shiftRecurrence.endDate,
+        count: shift.shiftRecurrence.count
+      } : undefined,
+      isRecurring: !!shift.shiftRecurrence,
+      _count: shift._count
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error('Errore nel recupero turno:', error);
+    return res.status(500).json({ error: "Errore interno del server" });
+  }
+};
 
 /**
  * Verifica conflitti di operatori per una data specifica
