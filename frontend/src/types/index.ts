@@ -59,6 +59,7 @@ export interface Site {
   checklist?: ChecklistItem[]
   checklists?: { id: string; title: string }[]
   _count?: { checklists?: number; shiftSites?: number }
+  checkItemsCount?: number
 }
 
 export interface CreateSiteRequest {

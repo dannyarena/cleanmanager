@@ -151,7 +151,7 @@ export function Siti() {
         <div className="flex items-center space-x-1">
           <CheckSquare className="w-4 h-4 text-gray-400" />
           {/* backend includes either checklists array or _count.checklists */}
-          <span>{(site.checklists?.length ?? site._count?.checklists ?? 0)} voci</span>
+          <span>{(site.checkItemsCount ?? site.checklists?.length ?? site._count?.checklists ?? 0)} voci</span>
         </div>
       )
     },

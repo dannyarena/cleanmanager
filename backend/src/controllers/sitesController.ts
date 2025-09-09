@@ -54,10 +54,16 @@ export const getSites: RequestHandler = async (req: Request, res: Response) => {
               name: true
             }
           },
+          // includi il conteggio delle checkItems per ciascuna checklist
           checklists: {
             select: {
               id: true,
-              title: true
+              title: true,
+              _count: {
+                select: {
+                  checkItems: true
+                }
+              }
             }
           },
           _count: {
@@ -71,8 +77,14 @@ export const getSites: RequestHandler = async (req: Request, res: Response) => {
       prisma.site.count({ where })
     ]);
 
-    const response: PaginatedResponse<Site & { client: any; checklists: any[]; _count: any }> = {
-      data: sites,
+    // Calcola il numero totale di check items per sito sommando i count di ogni checklist
+    const mappedSites = sites.map(s => {
+      const checkItemsCount = (s.checklists ?? []).reduce((acc, cl) => acc + (cl._count?.checkItems ?? 0), 0)
+      return ({ ...s, checkItemsCount })
+    })
+
+    const response: PaginatedResponse<Site & { client: any; checklists: any[]; _count: any; checkItemsCount?: number }> = {
+      data: mappedSites,
       pagination: {
         page: pageNum,
         limit: limitNum,
