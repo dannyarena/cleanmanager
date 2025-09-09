@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
@@ -10,12 +10,32 @@ interface Props {
   open: boolean
   onClose: () => void
   onCreated?: (client: Client) => void
+  client?: Client | null
+  onUpdated?: (client: Client) => void
 }
 
-export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
+export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated, client, onUpdated }) => {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<CreateClientRequest>({ name: '', email: '', phone: '', address: '', notes: '' })
   const [error, setError] = useState<string | null>(null)
+
+  const isEdit = !!client?.id
+
+  useEffect(() => {
+    if (client) {
+      setForm({
+        name: client.name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        notes: client.notes || ''
+      })
+    } else if (!open) {
+      // reset when modal closed
+      setForm({ name: '', email: '', phone: '', address: '', notes: '' })
+      setError(null)
+    }
+  }, [client, open])
 
   const handleChange = (k: keyof CreateClientRequest, v: any) => {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -31,9 +51,15 @@ export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated }) =>
 
     try {
       setLoading(true)
-      const created = await apiService.createClient(form)
-      onCreated?.(created)
-      onClose()
+      if (isEdit && client) {
+        const updated = await apiService.updateClient(client.id, form)
+        onUpdated?.(updated)
+        onClose()
+      } else {
+        const created = await apiService.createClient(form)
+        onCreated?.(created)
+        onClose()
+      }
     } catch (err: any) {
       setError(err?.message || 'Errore durante la creazione del cliente')
     } finally {
@@ -45,7 +71,7 @@ export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated }) =>
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuovo Cliente</DialogTitle>
+          <DialogTitle>{isEdit ? 'Modifica Cliente' : 'Nuovo Cliente'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,7 +105,7 @@ export const NewClientModal: React.FC<Props> = ({ open, onClose, onCreated }) =>
           <DialogFooter>
             <div className="flex justify-end space-x-2">
               <Button variant="ghost" onClick={onClose} disabled={loading}>Annulla</Button>
-              <Button type="submit" disabled={loading} onClick={(e) => handleSubmit(e)}>{loading ? 'Salvando...' : 'Crea Cliente'}</Button>
+              <Button type="submit" disabled={loading} onClick={(e) => handleSubmit(e)}>{loading ? (isEdit ? 'Aggiornando...' : 'Salvando...') : (isEdit ? 'Aggiorna Cliente' : 'Crea Cliente')}</Button>
             </div>
           </DialogFooter>
         </form>

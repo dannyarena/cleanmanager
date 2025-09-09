@@ -20,6 +20,7 @@ export function Clienti() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null })
   const [deleting, setDeleting] = useState(false)
   const [showNewClientModal, setShowNewClientModal] = useState(false)
+  const [editingClient, setEditingClient] = useState<Client | null>(null)
 
   useEffect(() => {
     loadClients()
@@ -128,7 +129,7 @@ export function Clienti() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => console.log('Edit client:', client.id)}
+            onClick={() => setEditingClient(client)}
             title="Modifica cliente"
           >
             <Edit className="w-4 h-4" />
@@ -225,6 +226,14 @@ export function Clienti() {
         open={showNewClientModal}
         onClose={() => setShowNewClientModal(false)}
         onCreated={(client) => setClients(prev => [client, ...prev])}
+      />
+
+      {/* Edit client modal (reuses NewClientModal) */}
+      <NewClientModal
+        open={!!editingClient}
+        client={editingClient}
+        onClose={() => setEditingClient(null)}
+        onUpdated={(updated) => setClients(prev => prev.map(c => c.id === updated.id ? updated : c))}
       />
     </div>
   )
