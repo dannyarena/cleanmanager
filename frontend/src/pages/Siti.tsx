@@ -150,8 +150,16 @@ export function Siti() {
       render: (_, site) => (
         <div className="flex items-center space-x-1">
           <CheckSquare className="w-4 h-4 text-gray-400" />
-          {/* backend includes either checklists array or _count.checklists */}
-          <span>{(site.checkItemsCount ?? site.checklists?.length ?? site._count?.checklists ?? 0)} voci</span>
+          {/* make the count a button that opens the checklist modal */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setChecklistSiteId(site.id); setChecklistOpen(true) }}
+            title="Gestisci checklist"
+            className="text-sm text-gray-700 hover:underline"
+          >
+            {(site.checkItemsCount ?? site.checklists?.length ?? site._count?.checklists ?? 0)} voci
+          </Button>
         </div>
       )
     },
@@ -166,14 +174,6 @@ export function Siti() {
       label: 'Azioni',
       render: (_, site) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setChecklistSiteId(site.id); setChecklistOpen(true) }}
-            title="Gestisci checklist"
-          >
-            <CheckSquare className="w-4 h-4" />
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -297,8 +297,8 @@ export function Siti() {
           onClose={() => { setChecklistOpen(false); setChecklistSiteId(null) }}
           siteId={checklistSiteId}
           onSaved={(items) => {
-            // update site checklist count in table
-            setSites(prev => prev.map(s => s.id === checklistSiteId ? { ...s, checklist: items } : s))
+            // update site checkItemsCount in table using returned items length
+            setSites(prev => prev.map(s => s.id === checklistSiteId ? { ...s, checkItemsCount: items.length } : s))
             setChecklistOpen(false)
             setChecklistSiteId(null)
           }}
