@@ -1,6 +1,6 @@
 import { LoginRequest, LoginResponse, User, ApiResponse, ApiError } from '../types'
 
-const API_BASE_URL = 'http://localhost:4000'
+const API_BASE_URL = 'http://localhost:4000/api'
 
 class AuthService {
   private tokenKey = 'cleanmanager_token'
@@ -37,7 +37,7 @@ class AuthService {
 
   // Login
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`http://localhost:4000/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +67,17 @@ class AuthService {
 
   // Verifica il token corrente
   async verifyToken(): Promise<User> {
-    const response = await this.authenticatedFetch('/auth/me')
+    const response = await fetch(`http://localhost:4000/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${this.getToken()}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      this.logout()
+      throw new Error('Sessione scaduta')
+    }
     const data: ApiResponse<User> = await response.json()
     
     this.setUser(data.data)
