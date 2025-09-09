@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
+import authRouter from './auth/authRouter';
 
 // Carica le variabili d'ambiente
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -22,6 +23,9 @@ app.use(cors({
 // Middleware per parsing JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/auth', authRouter);
 
 // Route di benvenuto
 app.get('/api/welcome', (req, res) => {
