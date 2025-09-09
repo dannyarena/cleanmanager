@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Clienti } from './pages/Clienti'
 import { Siti } from './pages/Siti'
 import { Operatori } from './pages/Operatori'
+import { Calendario } from './pages/Calendario'
 import { authService } from './services/auth'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="clienti" element={<Clienti />} />
           <Route path="siti" element={<Siti />} />
           <Route path="operatori" element={<Operatori />} />
+          <Route path="calendario" element={<Calendario />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
