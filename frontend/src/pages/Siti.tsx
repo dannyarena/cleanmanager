@@ -236,9 +236,11 @@ export function Siti() {
       {/* Results summary */}
       {!loading && (
         <div className="text-sm text-gray-600">
-          {sites.length === 0 
-            ? 'Nessun sito trovato'
-            : `${sites.length} sito${sites.length !== 1 ? 'i' : ''} trovato${sites.length !== 1 ? 'i' : ''}`
+          {sites.length === 0
+            ? 'Nessun sito ancora'
+            : sites.length === 1
+              ? '1 sito trovato'
+              : `${sites.length} siti trovati`
           }
         </div>
       )}
