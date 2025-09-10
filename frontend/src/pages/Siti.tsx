@@ -174,23 +174,20 @@ export function Siti() {
       label: 'Azioni',
       render: (_, site) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            className="inline-flex items-center px-2 py-1 bg-gray-600 text-white rounded shadow border border-gray-600 hover:bg-gray-700"
             onClick={() => { setEditingSite(site); setSiteModalOpen(true); }}
             title="Modifica sito"
           >
             <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+          </button>
+          <button
+            className="inline-flex items-center px-2 py-1 bg-destructive text-white rounded shadow hover:bg-red-700"
             onClick={() => setDeleteDialog({ open: true, site })}
-            className="text-red-600 hover:text-red-700"
             title="Elimina sito"
           >
             <Trash2 className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       )
     }

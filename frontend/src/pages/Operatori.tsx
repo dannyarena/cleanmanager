@@ -136,7 +136,7 @@ export function Operatori() {
     label: 'Azioni',
     render: (_, operator) => (
       <div className="flex items-center space-x-2">
-        <button className="inline-flex items-center px-2 py-1 bg-secondary text-white rounded" title="Modifica" onClick={() => { setEditing(operator); setModalOpen(true) }}>
+        <button className="inline-flex items-center px-2 py-1 bg-gray-600 text-white rounded shadow border border-gray-600 hover:bg-gray-700" title="Modifica" onClick={() => { setEditing(operator); setModalOpen(true) }}>
           <Edit className="w-4 h-4" />
         </button>
         <button className="inline-flex items-center px-2 py-1 bg-destructive text-white rounded" title="Elimina" onClick={() => { setToDelete(operator); setConfirmOpen(true) }}>

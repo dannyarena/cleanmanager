@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { EmptyState } from '../components/ui/empty-state'
 import { ConfirmDialog } from '../components/ui/dialog'
 import { ClientModal } from '../components/clients/ClientModal'
+import ClientSitesModal from '../components/clients/ClientSitesModal'
 import { apiService } from '../services/api'
 import { Client, TableColumn, SearchFilters } from '../types'
 import { debounce, formatDate } from '../lib/utils'
@@ -20,6 +21,8 @@ export function Clienti() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null })
   const [deleting, setDeleting] = useState(false)
   const [showClientModal, setShowClientModal] = useState(false)
+  const [sitesModalOpen, setSitesModalOpen] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
 
   // Apri modale se arrivo con ?action=create
   useEffect(() => {
@@ -117,9 +120,17 @@ export function Clienti() {
       key: '_count.sites',
       label: 'Siti',
       render: (value, client) => (
-        <div className="flex items-center space-x-1">
-          <Building2 className="w-4 h-4 text-gray-400" />
-          <span>{client._count?.sites || 0}</span>
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setSelectedClientId(client.id); setSitesModalOpen(true) }}
+            title={`Visualizza siti di ${client.name}`}
+            className="flex items-center space-x-2"
+          >
+            <Building2 className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-700">{client._count?.sites || 0}</span>
+          </Button>
         </div>
       )
     },
@@ -134,23 +145,20 @@ export function Clienti() {
       label: 'Azioni',
       render: (_, client) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            className="inline-flex items-center px-2 py-1 bg-gray-600 text-white rounded shadow border border-gray-600 hover:bg-gray-700"
             onClick={() => setEditingClient(client)}
             title="Modifica cliente"
           >
             <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+          </button>
+          <button
+            className="inline-flex items-center px-2 py-1 bg-destructive text-white rounded shadow hover:bg-red-700"
             onClick={() => setDeleteDialog({ open: true, client })}
-            className="text-red-600 hover:text-red-700"
             title="Elimina cliente"
           >
             <Trash2 className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       )
     }
@@ -244,6 +252,13 @@ export function Clienti() {
         client={editingClient}
         onClose={() => setEditingClient(null)}
         onUpdated={(updated) => setClients(prev => prev.map(c => c.id === updated.id ? updated : c))}
+      />
+
+      {/* Client sites read-only modal */}
+      <ClientSitesModal
+        open={sitesModalOpen}
+        onClose={() => { setSitesModalOpen(false); setSelectedClientId(null) }}
+        clientId={selectedClientId}
       />
     </div>
   )
