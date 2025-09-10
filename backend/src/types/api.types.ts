@@ -156,6 +156,24 @@ export interface OperatorConflict {
   };
 }
 
+// Tipi per le eccezioni dei turni ricorrenti
+export interface ShiftExceptionRequest {
+  date: string; // ISO string
+  exceptionType: 'cancelled' | 'modified';
+  newTitle?: string;
+  newNotes?: string;
+}
+
+export interface ShiftExceptionResponse {
+  id: string;
+  date: Date;
+  exceptionType: 'cancelled' | 'modified';
+  newTitle?: string;
+  newNotes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Tipi per le checklist
 export interface CheckItemRequest {
   title: string;

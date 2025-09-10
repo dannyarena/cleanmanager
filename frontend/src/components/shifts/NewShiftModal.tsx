@@ -177,6 +177,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
         recurrence: formData.hasRecurrence ? {
           frequency: formData.recurrence.frequency,
           interval: formData.recurrence.interval,
+          startDate: new Date(formData.date).toISOString(),
           endDate: formData.recurrence.endType === 'date' ? 
             new Date(formData.recurrence.endDate!).toISOString() : undefined,
           count: formData.recurrence.endType === 'count' ? 

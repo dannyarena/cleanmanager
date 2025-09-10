@@ -121,6 +121,7 @@ export interface CreateShiftRequest {
   recurrence?: {
     frequency: 'daily' | 'weekly'
     interval: number
+    startDate: string
     endDate?: string
     count?: number
   }

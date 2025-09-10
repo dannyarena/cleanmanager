@@ -10,10 +10,11 @@ import {
   AssignSitesRequest,
   AssignOperatorsRequest,
   ShiftResponse,
-  OperatorConflict
+  OperatorConflict,
+  ShiftExceptionRequest
 } from "../types/api.types";
-import { RecurrenceService } from "../services/recurrenceService";
-import { RecurrenceFrequency } from "@prisma/client";
+import { RecurrenceService, ShiftException } from "../services/recurrenceService";
+import { RecurrenceFrequency, ExceptionType } from "@prisma/client";
 
 /**
  * GET /shifts - Lista turni con generazione lazy delle ricorrenze
@@ -107,7 +108,7 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
     
     for (const shift of masterShifts) {
       if (shift.shiftRecurrence) {
-        // Turno ricorrente: genera occorrenze
+        // Turno ricorrente: genera occorrenze considerando le eccezioni
         const recurrenceOptions = {
           frequency: shift.shiftRecurrence.frequency,
           interval: shift.shiftRecurrence.interval,
@@ -116,20 +117,24 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
           count: shift.shiftRecurrence.count || undefined
         };
         
+        // Recupera eccezioni per questo turno
+        const exceptions = await getShiftExceptions(shift.id, tenantId);
+        
         const occurrences = RecurrenceService.generateOccurrences(
           shift.date,
           recurrenceOptions,
           rangeStart,
-          rangeEnd
+          rangeEnd,
+          exceptions
         );
         
         // Crea oggetti ShiftResponse per ogni occorrenza
         for (const occurrence of occurrences) {
           allOccurrences.push({
             id: occurrence.isOriginal ? shift.id : `${shift.id}_${occurrence.date.toISOString().split('T')[0]}`,
-            title: shift.title,
+            title: occurrence.isException && occurrence.modifiedTitle ? occurrence.modifiedTitle : shift.title,
             date: occurrence.date,
-            notes: shift.notes,
+            notes: occurrence.isException && occurrence.modifiedNotes ? occurrence.modifiedNotes : shift.notes,
             tenantId: shift.tenantId,
             createdAt: shift.createdAt,
             updatedAt: shift.updatedAt,
@@ -154,6 +159,8 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
               count: shift.shiftRecurrence.count
             },
             isRecurring: true,
+            isException: occurrence.isException,
+            exceptionType: occurrence.exceptionType,
             _count: shift._count
           });
         }
@@ -266,12 +273,28 @@ export const createShift: RequestHandler = async (req: Request, res: Response) =
       
       // Crea ricorrenza se specificata
       if (recurrence) {
+        // Valida startDate della ricorrenza
+        if (!recurrence.startDate) {
+          throw new Error("La data di inizio della ricorrenza è obbligatoria");
+        }
+        
+        const recurrenceStartDate = new Date(recurrence.startDate);
+        if (isNaN(recurrenceStartDate.getTime())) {
+          throw new Error("Data di inizio della ricorrenza non valida");
+        }
+        
         // Valida ricorrenza
         const recurrenceOptions = {
           frequency: recurrence.frequency === 'daily' ? RecurrenceFrequency.DAILY : RecurrenceFrequency.WEEKLY,
           interval: recurrence.interval,
-          startDate: new Date(recurrence.startDate),
-          endDate: recurrence.endDate ? new Date(recurrence.endDate) : undefined,
+          startDate: recurrenceStartDate,
+          endDate: recurrence.endDate ? (() => {
+            const endDate = new Date(recurrence.endDate!);
+            if (isNaN(endDate.getTime())) {
+              throw new Error("Data di fine della ricorrenza non valida");
+            }
+            return endDate;
+          })() : undefined,
           count: recurrence.count
         };
         
@@ -351,6 +374,50 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
     const { id } = req.params;
     const { title, date, notes, updateType = 'single' } = req.body as UpdateShiftRequest;
     
+    // Verifica se è un'occorrenza di turno ricorrente (formato: masterId_YYYY-MM-DD)
+    if (id.includes('_')) {
+      const [masterId, dateStr] = id.split('_');
+      const targetDate = new Date(dateStr);
+      
+      // Verifica che il turno master esista e appartenga al tenant
+      const masterShift = await prisma.shift.findFirst({
+        where: { id: masterId, tenantId },
+        include: { shiftRecurrence: true }
+      });
+
+      if (!masterShift || !masterShift.shiftRecurrence) {
+        return res.status(404).json({ error: "Turno ricorrente non trovato" });
+      }
+
+      // Verifica che la data sia un'occorrenza valida
+      const isValid = await isValidRecurrenceOccurrence(masterId, targetDate, tenantId);
+      if (!isValid) {
+        return res.status(400).json({ error: "Data non valida per questo turno ricorrente" });
+      }
+
+      // Crea o aggiorna eccezione per modificare questa occorrenza
+      await createShiftException(
+        masterId, 
+        targetDate, 
+        ExceptionType.MODIFIED,
+        title?.trim(),
+        notes?.trim()
+      );
+      
+      // Recupera turno aggiornato con le modifiche dell'eccezione
+      const updatedShift = await getShiftByIdHelper(masterId, tenantId);
+      
+      return res.json({
+        ...updatedShift,
+        id,
+        date: targetDate,
+        title: title?.trim() || updatedShift.title,
+        notes: notes?.trim() || updatedShift.notes,
+        isException: true,
+        exceptionType: ExceptionType.MODIFIED
+      });
+    }
+    
     // Trova turno
     const shift = await prisma.shift.findFirst({
       where: { id, tenantId },
@@ -385,10 +452,9 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         data: updateData
       });
     } else if (shift.shiftRecurrence && updateType === 'single') {
-      // Per ora, per semplicità, creiamo un'eccezione
-      // In una implementazione completa, si userebbe la tabella shift_exceptions
-      return res.status(501).json({ 
-        error: "Modifica di singole occorrenze non ancora implementata. Usa updateType: 'series'" 
+      return res.status(400).json({ 
+        error: "Per modificare una singola occorrenza, usa l'ID dell'occorrenza (formato: masterId_YYYY-MM-DD)",
+        hint: "Per modificare tutta la serie, usa updateType: 'series'"
       });
     } else {
       // Turno singolo
@@ -429,6 +495,33 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
     const { id } = req.params;
     const { deleteType = 'single' } = req.query;
     
+    // Verifica se è un'occorrenza di turno ricorrente (formato: masterId_YYYY-MM-DD)
+    if (id.includes('_')) {
+      const [masterId, dateStr] = id.split('_');
+      const targetDate = new Date(dateStr);
+      
+      // Verifica che il turno master esista e appartenga al tenant
+      const masterShift = await prisma.shift.findFirst({
+        where: { id: masterId, tenantId },
+        include: { shiftRecurrence: true }
+      });
+
+      if (!masterShift || !masterShift.shiftRecurrence) {
+        return res.status(404).json({ error: "Turno ricorrente non trovato" });
+      }
+
+      // Verifica che la data sia un'occorrenza valida
+      const isValid = await isValidRecurrenceOccurrence(masterId, targetDate, tenantId);
+      if (!isValid) {
+        return res.status(400).json({ error: "Data non valida per questo turno ricorrente" });
+      }
+
+      // Crea eccezione per cancellare questa occorrenza
+      await createShiftException(masterId, targetDate, ExceptionType.CANCELLED);
+      
+      return res.json({ message: "Occorrenza eliminata con successo" });
+    }
+    
     // Trova turno
     const shift = await prisma.shift.findFirst({
       where: { id, tenantId },
@@ -439,21 +532,27 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       return res.status(404).json({ error: "Turno non trovato" });
     }
     
+    // Se è un turno ricorrente e deleteType non è specificato, richiedi conferma
+    if (shift.shiftRecurrence && deleteType === 'single') {
+      return res.status(400).json({ 
+        error: "Per eliminare una singola occorrenza, usa l'ID dell'occorrenza (formato: masterId_YYYY-MM-DD)",
+        hint: "Per eliminare tutta la serie, usa deleteType: 'series'"
+      });
+    }
+    
     if (shift.shiftRecurrence && deleteType === 'series') {
       // Elimina tutta la serie
       await prisma.shift.delete({ where: { id } });
-    } else if (shift.shiftRecurrence && deleteType === 'single') {
-      // Per ora, per semplicità, restituiamo errore
-      // In una implementazione completa, si userebbe la tabella shift_exceptions
-      return res.status(501).json({ 
-        error: "Eliminazione di singole occorrenze non ancora implementata. Usa deleteType: 'series'" 
-      });
     } else {
       // Turno singolo
       await prisma.shift.delete({ where: { id } });
     }
     
-    return res.status(204).send();
+    const message = shift.shiftRecurrence ? 
+      "Serie ricorrente eliminata con successo" : 
+      "Turno eliminato con successo";
+    
+    return res.json({ message });
   } catch (error) {
     console.error('Errore nell\'eliminazione turno:', error);
     return res.status(500).json({ error: "Errore interno del server" });
@@ -906,4 +1005,94 @@ async function checkOperatorConflicts(
   }
   
   return conflicts;
+}
+
+/**
+ * Recupera le eccezioni per un turno ricorrente
+ */
+async function getShiftExceptions(shiftId: string, tenantId: string): Promise<ShiftException[]> {
+  const exceptions = await prisma.shiftException.findMany({
+    where: {
+      shiftId,
+      shift: { tenantId }
+    },
+    orderBy: { date: 'asc' }
+  });
+
+  return exceptions.map(ex => ({
+    date: ex.date,
+    exceptionType: ex.exceptionType,
+    newTitle: ex.newTitle || undefined,
+    newNotes: ex.newNotes || undefined
+  }));
+}
+
+/**
+ * Crea un'eccezione per un turno ricorrente
+ */
+async function createShiftException(
+  shiftId: string,
+  date: Date,
+  exceptionType: ExceptionType,
+  newTitle?: string,
+  newNotes?: string
+): Promise<void> {
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+
+  await prisma.shiftException.upsert({
+    where: {
+      shiftId_date: {
+        shiftId,
+        date: normalizedDate
+      }
+    },
+    update: {
+      exceptionType,
+      newTitle,
+      newNotes
+    },
+    create: {
+      shiftId,
+      date: normalizedDate,
+      exceptionType,
+      newTitle,
+      newNotes
+    }
+  });
+}
+
+/**
+ * Verifica se una data è un'occorrenza valida per un turno ricorrente
+ */
+async function isValidRecurrenceOccurrence(
+  shiftId: string,
+  targetDate: Date,
+  tenantId: string
+): Promise<boolean> {
+  const shift = await prisma.shift.findFirst({
+    where: { id: shiftId, tenantId },
+    include: { shiftRecurrence: true }
+  });
+
+  if (!shift || !shift.shiftRecurrence) {
+    return false;
+  }
+
+  const recurrenceOptions = {
+    frequency: shift.shiftRecurrence.frequency,
+    interval: shift.shiftRecurrence.interval,
+    startDate: shift.shiftRecurrence.startDate,
+    endDate: shift.shiftRecurrence.endDate || undefined,
+    count: shift.shiftRecurrence.count || undefined
+  };
+
+  const exceptions = await getShiftExceptions(shiftId, tenantId);
+
+  return RecurrenceService.isValidOccurrenceWithExceptions(
+    targetDate,
+    shift.date,
+    recurrenceOptions,
+    exceptions
+  );
 }

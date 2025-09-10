@@ -1,4 +1,4 @@
-import { RecurrenceFrequency } from '@prisma/client';
+import { RecurrenceFrequency, ExceptionType } from '@prisma/client';
 
 export interface RecurrenceOptions {
   frequency: RecurrenceFrequency;
@@ -11,6 +11,17 @@ export interface RecurrenceOptions {
 export interface GeneratedOccurrence {
   date: Date;
   isOriginal: boolean; // true se è il turno master originale
+  isException?: boolean; // true se è un'eccezione
+  exceptionType?: ExceptionType;
+  modifiedTitle?: string;
+  modifiedNotes?: string;
+}
+
+export interface ShiftException {
+  date: Date;
+  exceptionType: ExceptionType;
+  newTitle?: string;
+  newNotes?: string;
 }
 
 /**
@@ -24,13 +35,15 @@ export class RecurrenceService {
    * @param recurrence Opzioni di ricorrenza
    * @param rangeStart Data inizio intervallo
    * @param rangeEnd Data fine intervallo
+   * @param exceptions Array di eccezioni da applicare
    * @returns Array di occorrenze nell'intervallo
    */
   static generateOccurrences(
     masterDate: Date,
     recurrence: RecurrenceOptions,
     rangeStart: Date,
-    rangeEnd: Date
+    rangeEnd: Date,
+    exceptions: ShiftException[] = []
   ): GeneratedOccurrence[] {
     const occurrences: GeneratedOccurrence[] = [];
     const { frequency, interval, startDate, endDate, count } = recurrence;
@@ -42,12 +55,37 @@ export class RecurrenceService {
     const normalizedStartDate = this.normalizeDate(startDate);
     const normalizedEndDate = endDate ? this.normalizeDate(endDate) : null;
     
-    // Se il turno master è nell'intervallo, includilo
+    // Crea mappa delle eccezioni per accesso rapido
+    const exceptionMap = new Map<string, ShiftException>();
+    exceptions.forEach(exception => {
+      const dateKey = this.normalizeDate(exception.date).toISOString();
+      exceptionMap.set(dateKey, exception);
+    });
+
+    // Se il turno master è nell'intervallo, includilo (considerando eccezioni)
     if (normalizedMasterDate >= normalizedRangeStart && normalizedMasterDate <= normalizedRangeEnd) {
-      occurrences.push({
-        date: normalizedMasterDate,
-        isOriginal: true
-      });
+      const masterDateKey = normalizedMasterDate.toISOString();
+      const exception = exceptionMap.get(masterDateKey);
+      
+      if (exception && exception.exceptionType === 'CANCELLED') {
+        // Turno master cancellato, non includerlo
+      } else if (exception && exception.exceptionType === 'MODIFIED') {
+        // Turno master modificato
+        occurrences.push({
+          date: normalizedMasterDate,
+          isOriginal: true,
+          isException: true,
+          exceptionType: exception.exceptionType,
+          modifiedTitle: exception.newTitle,
+          modifiedNotes: exception.newNotes
+        });
+      } else {
+        // Turno master normale
+        occurrences.push({
+          date: normalizedMasterDate,
+          isOriginal: true
+        });
+      }
     }
     
     // Genera occorrenze ricorrenti
@@ -64,10 +102,29 @@ export class RecurrenceService {
       if (currentDate >= normalizedRangeStart && 
           currentDate <= normalizedRangeEnd && 
           currentDate.getTime() !== normalizedMasterDate.getTime()) {
-        occurrences.push({
-          date: new Date(currentDate),
-          isOriginal: false
-        });
+        
+        const currentDateKey = currentDate.toISOString();
+        const exception = exceptionMap.get(currentDateKey);
+        
+        if (exception && exception.exceptionType === 'CANCELLED') {
+          // Occorrenza cancellata, saltala
+        } else if (exception && exception.exceptionType === 'MODIFIED') {
+          // Occorrenza modificata
+          occurrences.push({
+            date: new Date(currentDate),
+            isOriginal: false,
+            isException: true,
+            exceptionType: exception.exceptionType,
+            modifiedTitle: exception.newTitle,
+            modifiedNotes: exception.newNotes
+          });
+        } else {
+          // Occorrenza normale
+          occurrences.push({
+            date: new Date(currentDate),
+            isOriginal: false
+          });
+        }
       }
       
       // Calcola prossima occorrenza
@@ -213,5 +270,57 @@ export class RecurrenceService {
     }
     
     return errors;
+  }
+
+  /**
+   * Crea un'eccezione per una data specifica
+   * @param date Data dell'eccezione
+   * @param exceptionType Tipo di eccezione
+   * @param newTitle Nuovo titolo (per modifiche)
+   * @param newNotes Nuove note (per modifiche)
+   * @returns Oggetto eccezione
+   */
+  static createException(
+    date: Date,
+    exceptionType: ExceptionType,
+    newTitle?: string,
+    newNotes?: string
+  ): ShiftException {
+    return {
+      date: this.normalizeDate(date),
+      exceptionType,
+      newTitle,
+      newNotes
+    };
+  }
+
+  /**
+   * Verifica se una data è un'occorrenza valida considerando le eccezioni
+   * @param targetDate Data da verificare
+   * @param masterDate Data del turno master
+   * @param recurrence Opzioni di ricorrenza
+   * @param exceptions Array di eccezioni
+   * @returns true se la data è un'occorrenza valida e non cancellata
+   */
+  static isValidOccurrenceWithExceptions(
+    targetDate: Date,
+    masterDate: Date,
+    recurrence: RecurrenceOptions,
+    exceptions: ShiftException[] = []
+  ): boolean {
+    // Prima verifica se è un'occorrenza valida
+    if (!this.isValidOccurrence(targetDate, masterDate, recurrence)) {
+      return false;
+    }
+
+    // Poi verifica se è cancellata
+    const normalizedTarget = this.normalizeDate(targetDate);
+    const targetDateKey = normalizedTarget.toISOString();
+    
+    const exception = exceptions.find(ex => 
+      this.normalizeDate(ex.date).toISOString() === targetDateKey
+    );
+    
+    return !(exception && exception.exceptionType === 'CANCELLED');
   }
 }
