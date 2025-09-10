@@ -35,9 +35,9 @@ export function Topbar() {
         {/* User actions */}
         <div className="flex items-center space-x-4">
           {/* User info */}
-          <div className="flex items-center space-x-3">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+          <div className="flex items-center min-w-[120px]">
+            <div className="flex flex-col justify-center mr-3">
+              <p className="text-sm font-medium text-gray-900 leading-tight">{user ? `${user.firstName} ${user.lastName}` : ''}</p>
               <p className="text-xs text-gray-500">
                 {user?.role === 'admin' ? 'Amministratore' : 
                  user?.isManager ? 'Manager' : 'Operatore'}
@@ -45,7 +45,7 @@ export function Topbar() {
             </div>
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-white">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
+                {(user?.firstName?.charAt(0) || user?.lastName?.charAt(0) || 'U').toUpperCase()}
               </span>
             </div>
           </div>
