@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Search, Edit, Trash2, MapPin, CheckSquare } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Table } from '../components/ui/table'
@@ -26,10 +27,47 @@ export function Siti() {
   const [editingSite, setEditingSite] = useState<Site | null>(null)
   const [checklistOpen, setChecklistOpen] = useState(false)
   const [checklistSiteId, setChecklistSiteId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   useEffect(() => {
     loadInitialData()
   }, [])
+
+  // Open modal when URL contains ?action=create and keep URL in sync with modal state
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (action === 'create') {
+      setEditingSite(null)
+      setSiteModalOpen(true)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+
+    // if modal opened for creation and URL not set, add it
+    if (siteModalOpen && !editingSite) {
+      if (action !== 'create') {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('action', 'create')
+        setSearchParams(params)
+      }
+      return
+    }
+
+    // when modal closed, remove the action param if present
+    if (!siteModalOpen && action === 'create') {
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('action')
+      // if there are no params left, navigate to same path without query (avoid leaving empty ?)
+      if ([...params.keys()].length === 0) {
+        navigate('/siti', { replace: true })
+      } else {
+        setSearchParams(params)
+      }
+    }
+  }, [siteModalOpen, editingSite])
 
   useEffect(() => {
     const debouncedSearch = debounce(() => {
