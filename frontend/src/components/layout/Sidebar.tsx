@@ -13,7 +13,7 @@ import { cn } from '../../lib/utils'
 import { authService } from '../../services/auth'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Clienti', href: '/clienti', icon: Users },
   { name: 'Siti', href: '/siti', icon: Building2 },
   { name: 'Operatori', href: '/operatori', icon: UserCheck },
