@@ -12,7 +12,7 @@ export function Operatori() {
   const [operators, setOperators] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortKey, setSortKey] = useState<string>('name')
+  const [sortKey, setSortKey] = useState<string>('firstName')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
@@ -61,49 +61,51 @@ export function Operatori() {
 
   const columns: TableColumn<User>[] = [
     {
-      key: 'name',
+      key: 'firstName',
       label: 'Operatore',
       sortable: true,
-      render: (value, operator) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-white">
-              {operator.name?.charAt(0).toUpperCase() || 'U'}
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-gray-900">{value}</span>
-              {operator.isManager && (
-                <Crown className="w-4 h-4 text-yellow-500" title="Manager" />
-              )}
+      render: (_, operator) => {
+        const displayName = `${operator.firstName || ''} ${operator.lastName || ''}`.trim()
+        const initial = (operator.firstName || operator.lastName || 'U').charAt(0).toUpperCase()
+        return (
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-white">{initial}</span>
             </div>
-            <div className="flex items-center text-sm text-gray-500 mt-1">
-              <Mail className="w-3 h-3 mr-1" />
-              {operator.email}
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-medium text-gray-900">{displayName || operator.email}</span>
+                    {operator.role === 'admin' && (
+                      <Crown className="w-4 h-4 text-yellow-500" title="Amministratore" />
+                    )}
+              </div>
+              <div className="flex items-center text-sm text-gray-500 mt-1">
+                <Mail className="w-3 h-3 mr-1" />
+                {operator.email}
+              </div>
             </div>
           </div>
-        </div>
-      )
+        )
+      }
     },
     {
-      key: 'role',
-      label: 'Ruolo',
-      sortable: true,
-      render: (value, operator) => (
-        <div>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            value === 'admin' 
-              ? 'bg-red-100 text-red-800'
-              : operator.isManager
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-blue-100 text-blue-800'
-          }`}>
-            {value === 'admin' ? 'Amministratore' : 
-             operator.isManager ? 'Manager' : 'Operatore'}
-          </span>
-        </div>
-      )
+    key: 'role',
+    label: 'Ruolo',
+    sortable: true,
+    render: (value, operator) => (
+      <div>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          value === 'admin'
+            ? 'bg-yellow-100 text-yellow-800'
+            : operator.isManager
+            ? 'bg-red-100 text-red-800'
+            : 'bg-blue-100 text-blue-800'
+        }`}>
+          {value === 'admin' ? 'Amministratore' : 
+           operator.isManager ? 'Manager' : 'Operatore'}
+        </span>
+      </div>
+    )
     },
     {
       key: 'createdAt',
