@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Search, UserCheck, Crown, Mail, Phone, Users } from 'lucide-react'
+import { Search, UserCheck, Crown, Mail, Phone, Users, Plus, Edit, Trash } from 'lucide-react'
 import { Input } from '../components/ui/input'
 import { Table } from '../components/ui/table'
 import { Card, CardContent } from '../components/ui/card'
@@ -7,6 +7,8 @@ import { EmptyState } from '../components/ui/empty-state'
 import { apiService } from '../services/api'
 import { User, TableColumn, SearchFilters } from '../types'
 import { debounce, formatDate } from '../lib/utils'
+import OperatorModal from '../components/operators/OperatorModal'
+import { ConfirmDialog } from '../components/ui/dialog'
 
 export function Operatori() {
   const [operators, setOperators] = useState<User[]>([])
@@ -14,6 +16,10 @@ export function Operatori() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortKey, setSortKey] = useState<string>('firstName')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<User | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [toDelete, setToDelete] = useState<User | null>(null)
 
   useEffect(() => {
     loadOperators()
@@ -124,6 +130,22 @@ export function Operatori() {
     }
   ]
 
+  // actions column
+  columns.push({
+    key: 'actions',
+    label: 'Azioni',
+    render: (_, operator) => (
+      <div className="flex items-center space-x-2">
+        <button className="inline-flex items-center px-2 py-1 bg-secondary text-white rounded" title="Modifica" onClick={() => { setEditing(operator); setModalOpen(true) }}>
+          <Edit className="w-4 h-4" />
+        </button>
+        <button className="inline-flex items-center px-2 py-1 bg-destructive text-white rounded" title="Elimina" onClick={() => { setToDelete(operator); setConfirmOpen(true) }}>
+          <Trash className="w-4 h-4" />
+        </button>
+      </div>
+    )
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -131,6 +153,11 @@ export function Operatori() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Operatori</h1>
           <p className="text-gray-600">Gestisci il team di operatori</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button className="inline-flex items-center px-3 py-2 bg-primary text-white rounded-md" onClick={() => { setEditing(null); setModalOpen(true) }}>
+            <Plus className="w-4 h-4 mr-2" /> Nuovo
+          </button>
         </div>
       </div>
 
@@ -231,6 +258,34 @@ export function Operatori() {
           sortDirection={sortDirection}
         />
       )}
+
+      <OperatorModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        user={editing}
+        onCreated={(u) => { setOperators(prev => [u, ...prev]); setModalOpen(false) }}
+        onUpdated={(u) => { setOperators(prev => prev.map(p => p.id === u.id ? u : p)); setModalOpen(false) }}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setToDelete(null) } }}
+        title="Elimina operatore"
+        description={toDelete ? `Sei sicuro di voler eliminare ${toDelete.firstName} ${toDelete.lastName}? Questa operazione non è reversibile.` : 'Sei sicuro?'}
+        onConfirm={async () => {
+          if (!toDelete) return
+          try {
+            await apiService.deleteOperator(toDelete.id)
+            setOperators(prev => prev.filter(p => p.id !== toDelete.id))
+            setConfirmOpen(false)
+            setToDelete(null)
+          } catch (err: any) {
+            console.error('Errore eliminazione:', err)
+            setConfirmOpen(false)
+            setToDelete(null)
+          }
+        }}
+      />
     </div>
   )
 }
