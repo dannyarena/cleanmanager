@@ -5,7 +5,10 @@ import { requireAuthenticated } from "../middleware/roleMiddleware";
 import {
   getOperators,
   getOperator,
-  getAvailableOperators
+  getAvailableOperators,
+  createOperator,
+  updateOperator,
+  deleteOperator
 } from "../controllers/operatorsController";
 
 const router = Router();
@@ -20,7 +23,16 @@ router.get('/', requireAuthenticated, getOperators);
 // GET /operators/available - Lista operatori per dropdown (tutti possono leggere)
 router.get('/available', requireAuthenticated, getAvailableOperators);
 
+// POST /operators - Crea operatore (solo Admin/Manager)
+router.post('/', createOperator);
+
 // GET /operators/:id - Dettaglio operatore (tutti possono leggere)
 router.get('/:id', requireAuthenticated, getOperator);
+
+// PATCH /operators/:id - Aggiorna operatore (solo Admin/Manager)
+router.patch('/:id', updateOperator);
+
+// DELETE /operators/:id - Elimina operatore (solo Admin/Manager)
+router.delete('/:id', deleteOperator);
 
 export default router;

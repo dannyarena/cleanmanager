@@ -1,7 +1,9 @@
 import { Request, Response, RequestHandler } from "express";
 import { prisma } from "../lib/prisma";
-import { getTenantId } from "../auth/authContext";
-import { QueryParams, PaginatedResponse, OperatorResponse } from "../types/api.types";
+import { getTenantId, getUser } from "../auth/authContext";
+import { isAdminOrManager } from "../middleware/roleMiddleware";
+import bcrypt from "bcryptjs";
+import { QueryParams, PaginatedResponse, OperatorResponse, CreateOperatorRequest, UpdateOperatorRequest } from "../types/api.types";
 
 /**
  * GET /operators - Lista operatori con filtri e ricerca
@@ -231,6 +233,246 @@ export const getAvailableOperators: RequestHandler = async (req: Request, res: R
     return res.json(simplifiedOperators);
   } catch (error) {
     console.error('Errore nel recupero operatori disponibili:', error);
+    return res.status(500).json({ error: "Errore interno del server" });
+  }
+};
+
+/**
+ * POST /operators - Crea nuovo operatore
+ */
+export const createOperator: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    const user = getUser(req);
+    
+    if (!tenantId || !user) {
+      return res.status(401).json({ error: "Autenticazione richiesta" });
+    }
+    
+    // Verifica permessi - solo Admin può creare operatori
+    const hasPermission = await isAdminOrManager(user.sub, tenantId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: "Solo Admin e Manager possono creare operatori" });
+    }
+    
+    const { email, firstName, lastName, password, role, isManager = false } = req.body as CreateOperatorRequest;
+    
+    // Validazione campi obbligatori
+    if (!email || !firstName || !lastName || !password || !role) {
+      return res.status(400).json({ error: "Email, nome, cognome, password e ruolo sono obbligatori" });
+    }
+    
+    // Verifica che l'email non sia già in uso
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+    
+    if (existingUser) {
+      return res.status(409).json({ error: "Email già in uso" });
+    }
+    
+    // Hash della password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Converti il ruolo al formato del database
+    const dbRole = role.toUpperCase() as 'OPERATORE' | 'ADMIN';
+    
+    // Crea l'operatore
+    const newOperator = await prisma.user.create({
+      data: {
+        email,
+        firstName,
+        lastName,
+        password: hashedPassword,
+        role: dbRole,
+        isManager,
+        tenantId // Usa sempre il tenantId dal token
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isManager: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    
+    // Mappa il risultato al formato di risposta
+    const mappedOperator: OperatorResponse = {
+      id: newOperator.id,
+      email: newOperator.email,
+      firstName: newOperator.firstName,
+      lastName: newOperator.lastName,
+      role: newOperator.role.toLowerCase(),
+      isManager: newOperator.isManager,
+      createdAt: newOperator.createdAt,
+      updatedAt: newOperator.updatedAt
+    };
+    
+    return res.status(201).json(mappedOperator);
+  } catch (error) {
+    console.error('Errore nella creazione operatore:', error);
+    return res.status(500).json({ error: "Errore interno del server" });
+  }
+};
+
+/**
+ * PATCH /operators/:id - Aggiorna operatore
+ */
+export const updateOperator: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    const user = getUser(req);
+    
+    if (!tenantId || !user) {
+      return res.status(401).json({ error: "Autenticazione richiesta" });
+    }
+    
+    // Verifica permessi
+    const hasPermission = await isAdminOrManager(user.sub, tenantId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: "Solo Admin e Manager possono modificare operatori" });
+    }
+    
+    const { id } = req.params;
+    const { email, firstName, lastName, password, role, isManager } = req.body as UpdateOperatorRequest;
+    
+    // Verifica che l'operatore esista e appartenga al tenant
+    const existingOperator = await prisma.user.findFirst({
+      where: {
+        id,
+        tenantId,
+        role: {
+          in: ['OPERATORE', 'ADMIN']
+        }
+      }
+    });
+    
+    if (!existingOperator) {
+      return res.status(404).json({ error: "Operatore non trovato" });
+    }
+    
+    // Se viene cambiata l'email, verifica che non sia già in uso
+    if (email && email !== existingOperator.email) {
+      const emailInUse = await prisma.user.findUnique({
+        where: { email }
+      });
+      
+      if (emailInUse) {
+        return res.status(409).json({ error: "Email già in uso" });
+      }
+    }
+    
+    // Prepara i dati per l'aggiornamento
+    const updateData: any = {};
+    
+    if (email !== undefined) updateData.email = email;
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (role !== undefined) updateData.role = role.toUpperCase();
+    if (isManager !== undefined) updateData.isManager = isManager;
+    
+    // Hash della nuova password se fornita
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+    
+    // Aggiorna l'operatore
+    const updatedOperator = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isManager: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    
+    // Mappa il risultato al formato di risposta
+    const mappedOperator: OperatorResponse = {
+      id: updatedOperator.id,
+      email: updatedOperator.email,
+      firstName: updatedOperator.firstName,
+      lastName: updatedOperator.lastName,
+      role: updatedOperator.role.toLowerCase(),
+      isManager: updatedOperator.isManager,
+      createdAt: updatedOperator.createdAt,
+      updatedAt: updatedOperator.updatedAt
+    };
+    
+    return res.json(mappedOperator);
+  } catch (error) {
+    console.error('Errore nell\'aggiornamento operatore:', error);
+    return res.status(500).json({ error: "Errore interno del server" });
+  }
+};
+
+/**
+ * DELETE /operators/:id - Elimina operatore
+ */
+export const deleteOperator: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    const user = getUser(req);
+    
+    if (!tenantId || !user) {
+      return res.status(401).json({ error: "Autenticazione richiesta" });
+    }
+    
+    // Verifica permessi
+    const hasPermission = await isAdminOrManager(user.sub, tenantId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: "Solo Admin e Manager possono eliminare operatori" });
+    }
+    
+    const { id } = req.params;
+    
+    // Verifica che l'operatore esista e appartenga al tenant
+    const existingOperator = await prisma.user.findFirst({
+      where: {
+        id,
+        tenantId,
+        role: {
+          in: ['OPERATORE', 'ADMIN']
+        }
+      },
+      include: {
+        _count: {
+          select: {
+            shiftOperators: true
+          }
+        }
+      }
+    });
+    
+    if (!existingOperator) {
+      return res.status(404).json({ error: "Operatore non trovato" });
+    }
+    
+    // Verifica se l'operatore ha turni assegnati
+    if (existingOperator._count.shiftOperators > 0) {
+      return res.status(409).json({ 
+        error: "Impossibile eliminare l'operatore: ha turni assegnati",
+        details: `L'operatore ha ${existingOperator._count.shiftOperators} turni assegnati`
+      });
+    }
+    
+    // Elimina l'operatore
+    await prisma.user.delete({
+      where: { id }
+    });
+    
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Errore nell\'eliminazione operatore:', error);
     return res.status(500).json({ error: "Errore interno del server" });
   }
 };

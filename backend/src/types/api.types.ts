@@ -43,6 +43,24 @@ export interface UpdateSiteRequest {
   clientId?: string;
 }
 
+export interface CreateOperatorRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  role: 'operatore' | 'admin';
+  isManager?: boolean;
+}
+
+export interface UpdateOperatorRequest {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  password?: string;
+  role?: 'operatore' | 'admin';
+  isManager?: boolean;
+}
+
 export interface OperatorResponse {
   id: string;
   email: string;

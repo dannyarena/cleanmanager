@@ -173,6 +173,47 @@ class ApiService {
     return data.data
   }
 
+  async getOperator(id: string): Promise<User> {
+    const response = await authService.authenticatedFetch(`/operators/${id}`)
+    return response.json()
+  }
+
+  async createOperator(operator: {
+    email: string
+    firstName: string
+    lastName: string
+    password: string
+    role: 'operatore' | 'admin'
+    isManager?: boolean
+  }): Promise<User> {
+    const response = await authService.authenticatedFetch('/operators', {
+      method: 'POST',
+      body: JSON.stringify(operator),
+    })
+    return response.json()
+  }
+
+  async updateOperator(id: string, operator: {
+    email?: string
+    firstName?: string
+    lastName?: string
+    password?: string
+    role?: 'operatore' | 'admin'
+    isManager?: boolean
+  }): Promise<User> {
+    const response = await authService.authenticatedFetch(`/operators/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(operator),
+    })
+    return response.json()
+  }
+
+  async deleteOperator(id: string): Promise<void> {
+    await authService.authenticatedFetch(`/operators/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
   // Turni
   async getShifts(filters?: SearchFilters): Promise<Shift[]> {
     const params = new URLSearchParams()
