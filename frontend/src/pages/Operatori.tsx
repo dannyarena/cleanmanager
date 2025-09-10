@@ -203,9 +203,11 @@ export function Operatori() {
       {/* Results summary */}
       {!loading && (
         <div className="text-sm text-gray-600">
-          {operators.length === 0 
-            ? 'Nessun operatore trovato'
-            : `${operators.length} operatore${operators.length !== 1 ? 'i' : ''} trovato${operators.length !== 1 ? 'i' : ''}`
+          {operators.length === 0
+            ? 'Nessun operatore ancora'
+            : operators.length === 1
+              ? '1 operatore trovato'
+              : `${operators.length} operatori trovati`
           }
         </div>
       )}
