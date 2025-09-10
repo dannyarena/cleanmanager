@@ -1,4 +1,5 @@
 import React from 'react'
+import logo from '../../assets/logo-cleanmanager.png'
 import { NavLink } from 'react-router-dom'
 import { 
   Home, 
@@ -26,7 +27,7 @@ export function Sidebar() {
     <div className="flex flex-col w-64 bg-white shadow-lg">
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4 bg-primary">
-        <h1 className="text-xl font-bold text-white">CleanManager</h1>
+        <img src={logo} alt="CleanManager" className="h-35 w-full max-w-[250px] object-contain" />
       </div>
 
       {/* Navigation */}
