@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { apiService } from '../services/api'
 import { Client, Site, User, Shift } from '../types'
+import { authService } from '../services/auth'
 import { formatDate } from '../lib/utils'
 
 interface DashboardStats {
@@ -40,6 +41,7 @@ export function Dashboard() {
   })
   const [recentShifts, setRecentShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(authService.getUser())
 
   useEffect(() => {
     loadDashboardData()
@@ -168,7 +170,7 @@ export function Dashboard() {
       {/* Welcome message */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Benvenuto in CleanManager
+          Benvenuto {user?.firstName ?? 'CleanManager'}
         </h2>
         <p className="text-gray-600">
           Gestisci i tuoi turni di pulizia, clienti e operatori in modo semplice ed efficace.
