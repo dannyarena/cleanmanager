@@ -821,7 +821,14 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
     }
     
     const { id } = req.params;
-    const { deleteType = 'single' } = { ...req.query, ...req.body } as { deleteType?: 'single' | 'series' | 'this_and_future' };
+    // Supporto retro-compatibilità: eventuale 'occurrence' viene trattato come 'single'
+    let { deleteType = 'single' } = { ...req.query, ...req.body } as { deleteType?: 'single' | 'series' | 'this_and_future' | 'occurrence' };
+    if (deleteType === 'occurrence') deleteType = 'single';
+    
+    // Data occorrenza passata da FE (ISO o YYYY-MM-DD)
+    const merged = { ...req.query, ...req.body } as any;
+    let occurrenceDate: Date | undefined = merged.occurrenceDate ? new Date(merged.occurrenceDate) : undefined;
+    if (occurrenceDate) occurrenceDate.setUTCHours(0,0,0,0);
     
     if (!id) {
       return res.status(400).json({ error: 'ID turno non valido' });
@@ -829,33 +836,56 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
     
     const parsedId = parseOccurrenceId(id);
     
-    // CASO 1: ID occorrenza (masterId_YYYY-MM-DD) - sempre deleteType='single'
     if (parsedId.occurrenceDate) {
       const { masterId, occurrenceDate: targetDate } = parsedId;
-      
-      // Verifica che il turno master esista e appartenga al tenant
+
       const masterShift = await prisma.shift.findFirst({
         where: { id: masterId, tenantId },
         include: { shiftRecurrence: true }
       });
-
       if (!masterShift || !masterShift.shiftRecurrence) {
         return res.status(404).json({ error: "Turno ricorrente non trovato" });
       }
 
-      // Verifica che la data sia un'occorrenza valida
       const isValid = await isValidRecurrenceOccurrence(masterId, targetDate, tenantId);
       if (!isValid) {
         return res.status(400).json({ error: "Data non valida per questo turno ricorrente" });
       }
 
-      // MODALITÀ SINGLE: Crea ShiftException CANCELLED
-      await createShiftException(masterId, targetDate, ExceptionType.CANCELLED);
-      
-      return res.json({ 
-        result: 'single_cancelled',
-        message: "Occorrenza eliminata con successo" 
-      });
+      if (deleteType === 'single') {
+        await createShiftException(masterId, targetDate, ExceptionType.CANCELLED);
+        return res.json({ result: 'occurrence_cancelled' });
+      }
+
+      if (deleteType === 'this_and_future') {
+        const pivotDate = targetDate;
+        const endDateForOriginal = new Date(pivotDate);
+        endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
+
+        if (endDateForOriginal < masterShift.shiftRecurrence.startDate) {
+          await prisma.shift.delete({ where: { id: masterId } });
+          return res.json({ result: 'series_deleted', message: "Serie eliminata completamente (nessuna occorrenza rimanente)" });
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await tx.shiftRecurrence.update({
+            where: { id: masterShift.shiftRecurrence!.id },
+            data: { endDate: endDateForOriginal }
+          });
+          await tx.shiftException.deleteMany({
+            where: { shiftId: masterId, date: { gte: pivotDate } }
+          });
+        });
+
+        return res.json({ result: 'series_truncated', message: "Serie terminata da questa data in poi" });
+      }
+
+      if (deleteType === 'series') {
+        await prisma.shift.delete({ where: { id: masterId } });
+        return res.json({ result: 'series_deleted' });
+      }
+
+      return res.status(400).json({ error: "deleteType non valido" });
     }
     
     // CASO 2: ID master - gestisce deleteType
@@ -875,19 +905,20 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
     // MODALITÀ SINGLE per turno master
     if (deleteType === 'single') {
       if (shift.shiftRecurrence) {
-        return res.status(400).json({ 
-          error: "Per eliminare una singola occorrenza di un turno ricorrente, usa l'ID dell'occorrenza (formato: masterId_YYYY-MM-DD)",
-          hint: "Per eliminare tutta la serie, usa deleteType: 'series'"
-        });
+        if (!occurrenceDate) {
+          return res.status(400).json({
+            error: "Per eliminare una singola occorrenza di un turno ricorrente devi passare occurrenceDate o usare l'ID di occorrenza (masterId_YYYY-MM-DD)"
+          });
+        }
+        const valid = await isValidRecurrenceOccurrence(shift.id, occurrenceDate, tenantId);
+        if (!valid) return res.status(400).json({ error: "Data non valida per questa ricorrenza" });
+
+        await createShiftException(shift.id, occurrenceDate, ExceptionType.CANCELLED);
+        return res.json({ result: 'occurrence_cancelled' });
       }
-      
-      // Turno singolo - elimina direttamente
+
       await prisma.shift.delete({ where: { id } });
-      
-      return res.json({ 
-        result: 'single_deleted',
-        message: "Turno eliminato con successo" 
-      });
+      return res.json({ result: 'single_deleted' });
     }
     
     // MODALITÀ SERIES: Cancella master + N:N + recurrence + eccezioni
@@ -910,45 +941,22 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       if (!shift.shiftRecurrence) {
         return res.status(400).json({ error: "deleteType 'this_and_future' è valido solo per turni ricorrenti" });
       }
-      
-      // Determina la data pivot (data del master)
-      const pivotDate = shift.date;
-      
-      // Calcola la data di fine per la serie (pivotDate - 1 giorno)
+
+      const pivotDate = occurrenceDate ?? shift.date;
       const endDateForOriginal = new Date(pivotDate);
       endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
-      
-      // Se la data di fine è prima della startDate, elimina tutta la serie
+
       if (endDateForOriginal < shift.shiftRecurrence.startDate) {
         await prisma.shift.delete({ where: { id } });
-        
-        return res.json({ 
-          result: 'series_deleted',
-          message: "Serie eliminata completamente (nessuna occorrenza rimanente)" 
-        });
+        return res.json({ result: 'series_deleted', message: "Serie eliminata completamente (nessuna occorrenza rimanente)" });
       }
-      
-      // Transazione per troncare la serie
+
       await prisma.$transaction(async (tx) => {
-        // 1. Aggiorna endDate della ricorrenza
-        await tx.shiftRecurrence.update({
-          where: { id: shift.shiftRecurrence!.id },
-          data: { endDate: endDateForOriginal }
-        });
-        
-        // 2. Elimina/annulla eccezioni future (date >= pivotDate)
-        await tx.shiftException.deleteMany({
-          where: {
-            shiftId: id,
-            date: { gte: pivotDate }
-          }
-        });
+        await tx.shiftRecurrence.update({ where: { id: shift.shiftRecurrence!.id }, data: { endDate: endDateForOriginal } });
+        await tx.shiftException.deleteMany({ where: { shiftId: id, date: { gte: pivotDate } } });
       });
-      
-      return res.json({ 
-        result: 'series_truncated',
-        message: "Serie terminata da questa data in poi" 
-      });
+
+      return res.json({ result: 'series_truncated' });
     }
     
     return res.status(400).json({ error: "deleteType non valido" });

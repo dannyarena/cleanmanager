@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -61,21 +61,30 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
   const [updateAction, setUpdateAction] = useState<UpdateAction>({ type: 'occurrence', confirmed: false })
 
+  // Refs to keep the initial snapshot of the form when the modal opens
+  const initialFormRef = useRef<FormData | null>(null)
+  const initialUpdateActionRef = useRef<UpdateAction | null>(null)
+
   // Inizializza form con dati del turno
   useEffect(() => {
     if (open && shift) {
-      setFormData({
+      const initial: FormData = {
         title: shift.title,
         date: new Date(shift.date).toISOString().split('T')[0],
         notes: shift.notes || '',
         siteIds: shift.sites.map(site => site.id),
         operatorIds: shift.operators.map(op => op.id)
-      })
+      }
+
+      setFormData(initial)
+      initialFormRef.current = initial
+
       setError(null)
       setConflicts([])
       setShowConflicts(false)
       setShowUpdateConfirm(false)
       setUpdateAction({ type: 'single', confirmed: false })
+      initialUpdateActionRef.current = { type: 'single', confirmed: false }
     }
   }, [open, shift])
 
@@ -229,6 +238,32 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
         : [...prev.operatorIds, operatorId]
     }))
   }
+
+  // Helper to compare arrays ignoring order
+  const arraysEqualSet = (a: string[] = [], b: string[] = []) => {
+    if (a.length !== b.length) return false
+    const sa = new Set(a)
+    for (const v of b) if (!sa.has(v)) return false
+    return true
+  }
+
+  // Determine if the form has any changes compared to the initial snapshot
+  const isDirty = useMemo(() => {
+    const initial = initialFormRef.current
+    const initialUpdate = initialUpdateActionRef.current
+    if (!initial) return false
+
+    if (formData.title !== initial.title) return true
+    if (formData.date !== initial.date) return true
+    if ((formData.notes || '') !== (initial.notes || '')) return true
+    if (!arraysEqualSet(formData.siteIds, initial.siteIds)) return true
+    if (!arraysEqualSet(formData.operatorIds, initial.operatorIds)) return true
+
+    // consider updateAction.type as part of the dirty check (useful for recurrence)
+    if (initialUpdate && updateAction.type !== initialUpdate.type) return true
+
+    return false
+  }, [formData, updateAction])
 
   if (!shift) return null
 
@@ -437,7 +472,7 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
                     <Button 
                       type="submit"
                       size="sm" 
-                      disabled={loading}
+                      disabled={loading || !isDirty}
                     >
                       {loading ? 'Aggiornamento...' : 'Conferma Aggiornamento'}
                     </Button>
@@ -513,7 +548,7 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
               <Button type="button" variant="outline" onClick={onClose}>
                 Annulla
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !isDirty}>
                 {loading ? 'Aggiornamento...' : 'Aggiorna Turno'}
               </Button>
             </DialogFooter>

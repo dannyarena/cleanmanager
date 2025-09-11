@@ -110,17 +110,33 @@ export function ShiftDetailModal({
         return
       }
 
-      // Procedi con l'eliminazione
-      const deleteType = shift.recurrence ? deleteAction.type : 'single'
-      
-      const options = {
-        deleteType,
-        occurrenceDate: (deleteType === 'this_and_future' && shift.recurrence) ? shift.date : undefined
+      // Determina il tipo di eliminazione richiesto dalla UI
+      const uiDeleteType = shift.recurrence ? deleteAction.type : 'single';
+      // Mappa 1:1 ai valori che si aspetta il backend
+      const deleteType = uiDeleteType as 'single' | 'series' | 'this_and_future';
+
+      const options: { deleteType: 'single' | 'series' | 'this_and_future'; occurrenceDate?: string } = { deleteType };
+
+      // Per 'this_and_future' dobbiamo dire da quale occorrenza troncare
+      if (deleteType === 'this_and_future' && shift.recurrence) {
+        options.occurrenceDate = shift.date; // la data dell'occorrenza mostrata nella modale
       }
 
-      // Estrai l'ID originale rimuovendo il suffisso _YYYY-MM-DD se presente
-      const originalShiftId = shift.id.includes('_') ? shift.id.split('_')[0] : shift.id
-      await apiService.deleteShift(originalShiftId, options)
+      // ID da passare all'API:
+      // - 'series' → usa SEMPRE l'ID master (senza suffisso)
+      // - 'single' → se abbiamo un ID di occorrenza (con suffisso), lo usiamo così com'è
+      //              altrimenti, master + occurrenceDate (ci pensa il backend)
+      let targetId = shift.id;
+      if (deleteType === 'series') {
+        targetId = shift.id.includes('_') ? shift.id.split('_')[0] : shift.id;
+      } else if (deleteType === 'single') {
+        if (!shift.id.includes('_') && shift.recurrence) {
+          options.occurrenceDate = shift.date;
+        }
+      }
+
+      // Esegui la chiamata
+      await apiService.deleteShift(targetId, options);
       
       // Toast di successo
       const successMessage = shift.recurrence && deleteType === 'series' 
