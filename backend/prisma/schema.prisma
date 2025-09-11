@@ -107,6 +107,9 @@ model Shift {
   shiftRecurrence  ShiftRecurrence?
   shiftExceptions  ShiftException[]
 
+  // Indici per performance
+  @@index([tenantId, date])
+  @@index([tenantId, createdAt])
   @@map("shifts")
 }
 
@@ -202,6 +205,7 @@ model ShiftException {
   exceptionType ExceptionType
   newTitle     String?
   newNotes     String?
+  newDate      DateTime?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -209,6 +213,7 @@ model ShiftException {
   shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
   @@unique([shiftId, date])
+  @@index([date]) // Per query veloci su occorrenze spostate
   @@map("shift_exceptions")
 }
 

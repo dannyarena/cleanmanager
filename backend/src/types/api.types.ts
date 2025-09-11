@@ -97,7 +97,28 @@ export interface UpdateShiftRequest {
   title?: string;
   date?: string; // ISO string
   notes?: string;
-  updateType?: 'single' | 'series'; // Per ricorrenze
+  siteIds?: string[];
+  operatorIds?: string[];
+  updateType?: 'single' | 'series' | 'this_and_future'; // Per ricorrenze (deprecato, usa applyTo)
+  applyTo?: 'single' | 'series' | 'this_and_future'; // Per ricorrenze
+  // Campi override per applyTo='single'
+  override?: {
+    title?: string;
+    notes?: string;
+    date?: string; // ISO date string per spostamento occorrenza
+  };
+  // Campi per aggiornamento ricorrenza (applyTo='series' o 'this_and_future')
+  recurrence?: {
+    frequency?: 'daily' | 'weekly';
+    interval?: number;
+    startDate?: string; // ISO string
+    endDate?: string;   // ISO string
+    count?: number;
+  };
+}
+
+export interface DeleteShiftRequest {
+  deleteType?: 'single' | 'series' | 'this_and_future'; // Per ricorrenze
 }
 
 export interface AssignSitesRequest {
@@ -140,6 +161,8 @@ export interface ShiftResponse {
     count?: number;
   };
   isRecurring: boolean;
+  isOverridden?: boolean;
+  exceptionType?: string;
   _count: {
     sites: number;
     operators: number;

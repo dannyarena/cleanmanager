@@ -7,6 +7,8 @@ import {
   User, 
   Shift, 
   CreateShiftRequest,
+  UpdateShiftRequest,
+  DeleteShiftRequest,
   ChecklistItem,
   CreateChecklistItemRequest,
   ApiResponse,
@@ -233,27 +235,38 @@ class ApiService {
     return data.data
   }
 
-  async createShift(shift: CreateShiftRequest): Promise<Shift> {
+  async createShift(shift: CreateShiftRequest): Promise<any> {
     const response = await authService.authenticatedFetch('/shifts', {
       method: 'POST',
       body: JSON.stringify(shift),
     })
-    const data: ApiResponse<Shift> = await response.json()
-    return data.data
+    const data = await response.json()
+    return data
   }
 
-  async updateShift(id: string, shift: Partial<CreateShiftRequest>): Promise<Shift> {
+  async updateShift(id: string, shift: UpdateShiftRequest, options?: { applyTo?: 'single' | 'series' | 'this_and_future' }): Promise<any> {
+    const requestBody = {
+      ...shift,
+      applyTo: options?.applyTo || shift.applyTo || shift.updateType || 'single'
+    }
+    
     const response = await authService.authenticatedFetch(`/shifts/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(shift),
+      body: JSON.stringify(requestBody),
     })
-    const data: ApiResponse<Shift> = await response.json()
-    return data.data
+    const data = await response.json()
+    return data
   }
 
-  async deleteShift(id: string): Promise<void> {
+  async deleteShift(id: string, options?: { deleteType: 'single' | 'series' | 'this_and_future', occurrenceDate?: string }): Promise<void> {
+    const requestBody = {
+      deleteType: options?.deleteType || 'single',
+      ...(options?.occurrenceDate && { occurrenceDate: options.occurrenceDate })
+    }
+    
     await authService.authenticatedFetch(`/shifts/${id}`, {
       method: 'DELETE',
+      body: JSON.stringify(requestBody),
     })
   }
 

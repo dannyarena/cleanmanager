@@ -17,7 +17,7 @@ export const jwtRequired: RequestHandler = (req: Request, res: Response, next: N
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JWTPayloadUser;
     setAuth(req, payload);
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({ error: "Token non valido" });
   }

@@ -111,7 +111,17 @@ export function Calendario() {
   }
 
   const handleShiftClick = (shift: Shift) => {
-    setSelectedShift(shift)
+    // Per le occorrenze di turni ricorrenti, aggiungi suffisso _YYYY-MM-DD all'ID
+    if (shift.recurrence) {
+      const occurrenceDate = new Date(shift.date).toISOString().split('T')[0]
+      const shiftWithOccurrenceId = {
+        ...shift,
+        id: `${shift.id}_${occurrenceDate}`
+      }
+      setSelectedShift(shiftWithOccurrenceId)
+    } else {
+      setSelectedShift(shift)
+    }
     setShowDetailModal(true)
   }
 

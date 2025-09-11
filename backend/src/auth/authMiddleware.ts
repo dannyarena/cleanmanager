@@ -9,12 +9,12 @@ export const requireRole = (...roles: UserRole[]): RequestHandler => {
     if (!user) {
       return res.status(401).json({ error: "Autenticazione richiesta" });
     }
-    
+
     if (!roles.includes(user.role)) {
       return res.status(403).json({ error: "Permessi insufficienti" });
     }
     
-    next();
+    return next();
   };
 };
 
@@ -22,8 +22,8 @@ export const requireTenant: RequestHandler = (req: Request, res: Response, next:
   const tenantId = getTenantId(req);
   
   if (!tenantId) {
-    return res.status(401).json({ error: "Tenant ID mancante" });
+    return res.status(400).json({ error: "Tenant ID mancante" });
   }
-  
-  next();
+
+  return next();
 };

@@ -38,7 +38,7 @@ export const requireAuthenticated: RequestHandler = (req: Request, res: Response
     return res.status(401).json({ error: "Autenticazione richiesta" });
   }
   
-  next();
+  return next();
 };
 
 /**

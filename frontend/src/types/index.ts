@@ -125,6 +125,18 @@ export interface CreateShiftRequest {
     endDate?: string
     count?: number
   }
+  updateType?: 'single' | 'series' | 'this_and_future'
+}
+
+export interface UpdateShiftRequest extends Partial<CreateShiftRequest> {
+  updateType?: 'single' | 'series' | 'this_and_future' // Deprecato, usa applyTo
+  applyTo?: 'single' | 'series' | 'this_and_future'
+  occurrenceDate?: string
+}
+
+export interface DeleteShiftRequest {
+  deleteType: 'single' | 'series' | 'this_and_future'
+  occurrenceDate?: string
 }
 
 // Tipi per le API responses

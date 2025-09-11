@@ -100,41 +100,9 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
 
   const checkConflicts = async () => {
     try {
-      const selectedDate = new Date(formData.date)
-      const startOfDay = new Date(selectedDate)
-      startOfDay.setHours(0, 0, 0, 0)
-      const endOfDay = new Date(selectedDate)
-      endOfDay.setHours(23, 59, 59, 999)
-
-      const existingShifts = await apiService.getShifts({
-        from: startOfDay.toISOString(),
-        to: endOfDay.toISOString()
-      })
-
-      const conflictingOperators: OperatorConflict[] = []
-
-      formData.operatorIds.forEach(operatorId => {
-        const operator = operators.find(op => op.id === operatorId)
-        if (!operator) return
-
-        const conflictingShifts = existingShifts.filter(shift => 
-          shift.operators.some(op => op.id === operatorId)
-        )
-
-        if (conflictingShifts.length > 0) {
-          conflictingOperators.push({
-            operatorId,
-            operatorName: `${operator.firstName} ${operator.lastName}`,
-            conflictingShifts: conflictingShifts.map(shift => ({
-              id: shift.id,
-              title: shift.title,
-              date: shift.date
-            }))
-          })
-        }
-      })
-
-      setConflicts(conflictingOperators)
+      // I conflitti verranno gestiti direttamente dalla risposta del backend
+      // durante la creazione del turno, quindi resettiamo i conflitti locali
+      setConflicts([])
     } catch (error) {
       console.error('Errore nel controllo conflitti:', error)
     }
@@ -185,7 +153,30 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
         } : undefined
       }
 
-      await apiService.createShift(shiftData)
+      const response = await apiService.createShift(shiftData)
+      
+      // Gestisci warnings.operatorConflicts[] dalla risposta del backend
+      if (response.warnings?.operatorConflicts && response.warnings.operatorConflicts.length > 0) {
+        const backendConflicts: OperatorConflict[] = response.warnings.operatorConflicts.map(conflict => ({
+          operatorId: conflict.operatorId,
+          operatorName: conflict.operatorName,
+          conflictingShifts: [{
+            id: conflict.conflictingShiftId,
+            title: conflict.conflictingShiftTitle,
+            date: conflict.conflictDate
+          }]
+        }))
+        
+        setConflicts(backendConflicts)
+        
+        // Se non abbiamo ancora mostrato i conflitti, mostrali ora
+        if (!showConflicts) {
+          setShowConflicts(true)
+          setLoading(false)
+          return
+        }
+      }
+      
       onShiftCreated()
     } catch (error: any) {
       setError(error.message || 'Errore nella creazione del turno')
@@ -499,15 +490,41 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800">
                 <div className="font-medium mb-2">Attenzione: Conflitti rilevati</div>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-2 text-sm">
                   {conflicts.map(conflict => (
-                    <div key={conflict.operatorId}>
-                      <strong>{conflict.operatorName}</strong> è già assegnato a:
-                      <ul className="ml-4 list-disc">
+                    <div key={conflict.operatorId} className="border-l-2 border-orange-300 pl-3">
+                      <div className="font-medium text-orange-900">
+                        {conflict.operatorName}
+                      </div>
+                      <div className="text-orange-700 mb-1">è già assegnato a:</div>
+                      <div className="space-y-1">
                         {conflict.conflictingShifts.map(shift => (
-                          <li key={shift.id}>{shift.title}</li>
+                          <div key={shift.id} className="flex items-center justify-between bg-orange-100 rounded px-2 py-1">
+                            <div className="flex-1">
+                              <div className="font-medium text-orange-900">{shift.title}</div>
+                              <div className="text-xs text-orange-600">
+                                {new Date(shift.date).toLocaleDateString('it-IT', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'short'
+                                })}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-orange-700 hover:text-orange-900 hover:bg-orange-200 h-6 px-2 text-xs"
+                              onClick={() => {
+                                // TODO: Implementare navigazione al turno confliggente
+                                console.log('Navigate to shift:', shift.id)
+                              }}
+                            >
+                              Visualizza
+                            </Button>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   ))}
                 </div>

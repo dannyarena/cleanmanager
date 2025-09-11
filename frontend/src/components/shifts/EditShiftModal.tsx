@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Alert, AlertDescription } from '../ui/alert'
 import { Calendar, Users, MapPin, AlertTriangle, X } from 'lucide-react'
 import { apiService } from '../../services/api'
-import { Shift, Site, User, CreateShiftRequest } from '../../types'
+import { Shift, Site, User, CreateShiftRequest, UpdateShiftRequest } from '../../types'
+import { useToast, toast } from '../ui/toast'
 
 interface EditShiftModalProps {
   open: boolean
@@ -29,7 +30,7 @@ interface FormData {
 }
 
 interface UpdateAction {
-  type: 'occurrence' | 'series'
+  type: 'single' | 'series' | 'this_and_future'
   confirmed: boolean
 }
 
@@ -44,6 +45,7 @@ interface OperatorConflict {
 }
 
 export function EditShiftModal({ open, onClose, shift, sites, operators, onShiftUpdated }: EditShiftModalProps) {
+  const { addToast } = useToast()
   const [formData, setFormData] = useState<FormData>({
     title: '',
     date: '',
@@ -73,7 +75,7 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
       setConflicts([])
       setShowConflicts(false)
       setShowUpdateConfirm(false)
-      setUpdateAction({ type: 'occurrence', confirmed: false })
+      setUpdateAction({ type: 'single', confirmed: false })
     }
   }, [open, shift])
 
@@ -87,45 +89,10 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
   }, [formData.operatorIds, formData.date, shift])
 
   const checkConflicts = async () => {
-    if (!shift) return
-
     try {
-      const selectedDate = new Date(formData.date)
-      const startOfDay = new Date(selectedDate)
-      startOfDay.setHours(0, 0, 0, 0)
-      const endOfDay = new Date(selectedDate)
-      endOfDay.setHours(23, 59, 59, 999)
-
-      const existingShifts = await apiService.getShifts({
-        from: startOfDay.toISOString(),
-        to: endOfDay.toISOString()
-      })
-
-      const conflictingOperators: OperatorConflict[] = []
-
-      formData.operatorIds.forEach(operatorId => {
-        const operator = operators.find(op => op.id === operatorId)
-        if (!operator) return
-
-        const conflictingShifts = existingShifts.filter(existingShift => 
-          existingShift.id !== shift.id && // Escludi il turno corrente
-          existingShift.operators.some(op => op.id === operatorId)
-        )
-
-        if (conflictingShifts.length > 0) {
-          conflictingOperators.push({
-            operatorId,
-            operatorName: `${operator.firstName} ${operator.lastName}`,
-            conflictingShifts: conflictingShifts.map(conflictShift => ({
-              id: conflictShift.id,
-              title: conflictShift.title,
-              date: conflictShift.date
-            }))
-          })
-        }
-      })
-
-      setConflicts(conflictingOperators)
+      // I conflitti verranno gestiti direttamente dalla risposta del backend
+      // durante l'aggiornamento del turno, quindi resettiamo i conflitti locali
+      setConflicts([])
     } catch (error) {
       console.error('Errore nel controllo conflitti:', error)
     }
@@ -167,23 +134,75 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
       setLoading(true)
       setError(null)
 
-      const updateData: Partial<CreateShiftRequest> = {
+      const updateData: UpdateShiftRequest = {
         title: formData.title.trim(),
         date: new Date(formData.date).toISOString(),
         notes: formData.notes.trim() || undefined,
         siteIds: formData.siteIds,
-        operatorIds: formData.operatorIds
+        operatorIds: formData.operatorIds,
+        // Manteniamo updateType per compatibilità ma usiamo applyTo
+        updateType: shift.recurrence ? updateAction.type : 'single',
+        applyTo: shift.recurrence ? updateAction.type : 'single'
       }
 
-      // Aggiungi parametro per specificare se aggiornare solo occorrenza o serie
-      const updateParams = shift.recurrence && updateAction.type === 'series' 
-        ? { ...updateData, updateType: 'series' }
-        : { ...updateData, updateType: 'occurrence' }
+      // Aggiungi occurrenceDate se necessario
+      if (shift.recurrence && (updateData.applyTo === 'this_and_future' || updateData.applyTo === 'single')) {
+        updateData.occurrenceDate = shift.date
+      }
 
-      await apiService.updateShift(shift.id, updateParams)
+      const options = {
+        applyTo: updateData.applyTo
+      }
+
+      // Estrai l'ID originale rimuovendo il suffisso _YYYY-MM-DD se presente
+      const originalShiftId = shift.id.includes('_') ? shift.id.split('_')[0] : shift.id
+      const response = await apiService.updateShift(originalShiftId, updateData, options)
+      
+      // Gestisci warnings.operatorConflicts[] dalla risposta del backend
+      if (response.warnings?.operatorConflicts && response.warnings.operatorConflicts.length > 0) {
+        const backendConflicts: OperatorConflict[] = response.warnings.operatorConflicts.map(conflict => ({
+          operatorId: conflict.operatorId,
+          operatorName: conflict.operatorName,
+          conflictingShifts: [{
+            id: conflict.conflictingShiftId,
+            title: conflict.conflictingShiftTitle,
+            date: conflict.conflictDate
+          }]
+        }))
+        
+        setConflicts(backendConflicts)
+        
+        // Se non abbiamo ancora mostrato i conflitti, mostrali ora
+        if (!showConflicts) {
+          setShowConflicts(true)
+          setLoading(false)
+          return
+        }
+      }
+      
+      // Toast di successo basato sul tipo di aggiornamento
+      const getSuccessMessage = () => {
+        if (!shift.recurrence) {
+          return 'Turno aggiornato con successo'
+        }
+        switch (updateAction.type) {
+          case 'single':
+            return 'Occorrenza del turno aggiornata con successo'
+          case 'this_and_future':
+            return 'Turno aggiornato da questa occorrenza in poi'
+          case 'series':
+            return 'Intera serie di turni aggiornata con successo'
+          default:
+            return 'Turno aggiornato con successo'
+        }
+      }
+      
+      addToast(toast.success(getSuccessMessage()))
       onShiftUpdated()
     } catch (error: any) {
-      setError(error.message || 'Errore nell\'aggiornamento del turno')
+      const errorMessage = error.message || 'Errore nell\'aggiornamento del turno'
+      setError(errorMessage)
+      addToast(toast.error('Errore aggiornamento', errorMessage))
     } finally {
       setLoading(false)
     }
@@ -369,12 +388,24 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
                       <input
                         type="radio"
                         name="updateType"
-                        value="occurrence"
-                        checked={updateAction.type === 'occurrence'}
-                        onChange={(e) => setUpdateAction({ ...updateAction, type: 'occurrence' })}
+                        value="single"
+                        checked={updateAction.type === 'single'}
+                        onChange={(e) => setUpdateAction({ ...updateAction, type: 'single' })}
                       />
                       <span className="text-sm text-blue-800">
                         Solo questa occorrenza
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="updateType"
+                        value="this_and_future"
+                        checked={updateAction.type === 'this_and_future'}
+                        onChange={(e) => setUpdateAction({ ...updateAction, type: 'this_and_future' })}
+                      />
+                      <span className="text-sm text-blue-800">
+                        Da questa occorrenza in poi
                       </span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
@@ -418,15 +449,41 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800">
                 <div className="font-medium mb-2">Attenzione: Conflitti rilevati</div>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-2 text-sm">
                   {conflicts.map(conflict => (
-                    <div key={conflict.operatorId}>
-                      <strong>{conflict.operatorName}</strong> è già assegnato a:
-                      <ul className="ml-4 list-disc">
+                    <div key={conflict.operatorId} className="border-l-2 border-orange-300 pl-3">
+                      <div className="font-medium text-orange-900">
+                        {conflict.operatorName}
+                      </div>
+                      <div className="text-orange-700 mb-1">è già assegnato a:</div>
+                      <div className="space-y-1">
                         {conflict.conflictingShifts.map(conflictShift => (
-                          <li key={conflictShift.id}>{conflictShift.title}</li>
+                          <div key={conflictShift.id} className="flex items-center justify-between bg-orange-100 rounded px-2 py-1">
+                            <div className="flex-1">
+                              <div className="font-medium text-orange-900">{conflictShift.title}</div>
+                              <div className="text-xs text-orange-600">
+                                {new Date(conflictShift.date).toLocaleDateString('it-IT', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'short'
+                                })}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-orange-700 hover:text-orange-900 hover:bg-orange-200 h-6 px-2 text-xs"
+                              onClick={() => {
+                                // TODO: Implementare navigazione al turno confliggente
+                                console.log('Navigate to shift:', conflictShift.id)
+                              }}
+                            >
+                              Visualizza
+                            </Button>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   ))}
                 </div>

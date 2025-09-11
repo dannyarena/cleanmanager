@@ -18,8 +18,9 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { apiService } from '../../services/api'
-import { Shift, Site, User, ChecklistItem } from '../../types'
+import { Shift, Site, User, ChecklistItem, DeleteShiftRequest } from '../../types'
 import { EditShiftModal } from './EditShiftModal'
+import { useToast, toast } from '../ui/toast'
 
 interface ShiftDetailModalProps {
   open: boolean
@@ -32,7 +33,7 @@ interface ShiftDetailModalProps {
 }
 
 interface DeleteAction {
-  type: 'occurrence' | 'series'
+  type: 'single' | 'series' | 'this_and_future'
   confirmed: boolean
 }
 
@@ -45,6 +46,7 @@ export function ShiftDetailModal({
   onShiftUpdated, 
   onShiftDeleted 
 }: ShiftDetailModalProps) {
+  const { addToast } = useToast()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteAction, setDeleteAction] = useState<DeleteAction>({ type: 'occurrence', confirmed: false })
@@ -58,7 +60,7 @@ export function ShiftDetailModal({
     if (shift) {
       setError(null)
       setShowDeleteConfirm(false)
-      setDeleteAction({ type: 'occurrence', confirmed: false })
+      setDeleteAction({ type: 'single', confirmed: false })
       loadChecklists()
     }
   }, [shift])
@@ -109,14 +111,30 @@ export function ShiftDetailModal({
       }
 
       // Procedi con l'eliminazione
-      const deleteParams = shift.recurrence && deleteAction.type === 'series' 
-        ? { deleteType: 'series' }
-        : { deleteType: 'occurrence' }
+      const deleteType = shift.recurrence ? deleteAction.type : 'single'
+      
+      const options = {
+        deleteType,
+        occurrenceDate: (deleteType === 'this_and_future' && shift.recurrence) ? shift.date : undefined
+      }
 
-      await apiService.deleteShift(shift.id)
+      // Estrai l'ID originale rimuovendo il suffisso _YYYY-MM-DD se presente
+      const originalShiftId = shift.id.includes('_') ? shift.id.split('_')[0] : shift.id
+      await apiService.deleteShift(originalShiftId, options)
+      
+      // Toast di successo
+      const successMessage = shift.recurrence && deleteType === 'series' 
+        ? 'Serie di turni eliminata con successo'
+        : shift.recurrence && deleteType === 'this_and_future'
+        ? 'Turno e occorrenze future eliminate con successo'
+        : 'Turno eliminato con successo'
+      
+      addToast(toast.success('Eliminazione completata', successMessage))
       onShiftDeleted()
     } catch (error: any) {
-      setError(error.message || 'Errore nell\'eliminazione del turno')
+      const errorMessage = error.message || 'Errore nell\'eliminazione del turno'
+      setError(errorMessage)
+      addToast(toast.error('Errore eliminazione', errorMessage))
     } finally {
       setLoading(false)
     }
@@ -390,12 +408,24 @@ export function ShiftDetailModal({
                         <input
                           type="radio"
                           name="deleteType"
-                          value="occurrence"
-                          checked={deleteAction.type === 'occurrence'}
-                          onChange={(e) => setDeleteAction({ ...deleteAction, type: 'occurrence' })}
+                          value="single"
+                          checked={deleteAction.type === 'single'}
+                          onChange={(e) => setDeleteAction({ ...deleteAction, type: 'single' })}
                         />
                         <span className="text-sm text-orange-800">
                           Solo questa occorrenza ({formatDate(shift.date)})
+                        </span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="deleteType"
+                          value="this_and_future"
+                          checked={deleteAction.type === 'this_and_future'}
+                          onChange={(e) => setDeleteAction({ ...deleteAction, type: 'this_and_future' })}
+                        />
+                        <span className="text-sm text-orange-800">
+                          Da questa occorrenza in poi
                         </span>
                       </label>
                       <label className="flex items-center space-x-2 cursor-pointer">

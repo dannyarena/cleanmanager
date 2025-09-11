@@ -533,6 +533,9 @@ export const updateSiteChecklist: RequestHandler = async (req: Request, res: Res
         });
       } else {
         // Crea nuova checklist
+        if (!id) {
+          throw new Error('Site ID è richiesto per creare una checklist');
+        }
         checklist = await tx.checklist.create({
           data: {
             title,
@@ -546,6 +549,9 @@ export const updateSiteChecklist: RequestHandler = async (req: Request, res: Res
       const createdItems = [];
       for (let i = 0; i < checkItems.length; i++) {
         const item = checkItems[i];
+        if (!item) {
+          throw new Error(`Item checklist non valido all'indice ${i}`);
+        }
         const createdItem = await tx.checkItem.create({
           data: {
             title: item.title,

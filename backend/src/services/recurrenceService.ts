@@ -15,6 +15,7 @@ export interface GeneratedOccurrence {
   exceptionType?: ExceptionType;
   modifiedTitle?: string;
   modifiedNotes?: string;
+  modifiedDate?: Date; // nuova data se spostata
 }
 
 export interface ShiftException {
@@ -22,6 +23,7 @@ export interface ShiftException {
   exceptionType: ExceptionType;
   newTitle?: string;
   newNotes?: string;
+  newDate?: Date;
 }
 
 /**
@@ -43,7 +45,8 @@ export class RecurrenceService {
     recurrence: RecurrenceOptions,
     rangeStart: Date,
     rangeEnd: Date,
-    exceptions: ShiftException[] = []
+    exceptions: ShiftException[] = [],
+    maxOccurrences: number = 500
   ): GeneratedOccurrence[] {
     const occurrences: GeneratedOccurrence[] = [];
     const { frequency, interval, startDate, endDate, count } = recurrence;
@@ -71,13 +74,15 @@ export class RecurrenceService {
         // Turno master cancellato, non includerlo
       } else if (exception && exception.exceptionType === 'MODIFIED') {
         // Turno master modificato
+        const effectiveDate = exception.newDate ? this.normalizeDate(exception.newDate) : normalizedMasterDate;
         occurrences.push({
-          date: normalizedMasterDate,
+          date: effectiveDate,
           isOriginal: true,
           isException: true,
           exceptionType: exception.exceptionType,
           modifiedTitle: exception.newTitle,
-          modifiedNotes: exception.newNotes
+          modifiedNotes: exception.newNotes,
+          modifiedDate: exception.newDate ? effectiveDate : undefined
         });
       } else {
         // Turno master normale
@@ -110,13 +115,15 @@ export class RecurrenceService {
           // Occorrenza cancellata, saltala
         } else if (exception && exception.exceptionType === 'MODIFIED') {
           // Occorrenza modificata
+          const effectiveDate = exception.newDate ? this.normalizeDate(exception.newDate) : new Date(currentDate);
           occurrences.push({
-            date: new Date(currentDate),
+            date: effectiveDate,
             isOriginal: false,
             isException: true,
             exceptionType: exception.exceptionType,
             modifiedTitle: exception.newTitle,
-            modifiedNotes: exception.newNotes
+            modifiedNotes: exception.newNotes,
+            modifiedDate: exception.newDate ? effectiveDate : undefined
           });
         } else {
           // Occorrenza normale
@@ -136,13 +143,43 @@ export class RecurrenceService {
       
       occurrenceCount++;
       
-      // Protezione contro loop infiniti
-      if (occurrenceCount > 1000) {
-        console.warn('Raggiunto limite massimo di occorrenze (1000)');
+      // Protezione contro loop infiniti e cap sulle occorrenze
+      if (occurrenceCount > maxOccurrences) {
+        console.warn(`Raggiunto limite massimo di occorrenze (${maxOccurrences})`);
         break;
       }
     }
     
+    // Aggiungi occorrenze spostate che cadono nell'intervallo
+    exceptions.forEach(exception => {
+      if (exception.exceptionType === 'MODIFIED' && exception.newDate) {
+        const newDate = this.normalizeDate(exception.newDate);
+        const originalDate = this.normalizeDate(exception.date);
+        
+        // Se la nuova data è nell'intervallo ma l'originale non lo era
+        if (newDate >= normalizedRangeStart && newDate <= normalizedRangeEnd &&
+            (originalDate < normalizedRangeStart || originalDate > normalizedRangeEnd)) {
+          
+          // Verifica che non sia già stata aggiunta
+          const alreadyExists = occurrences.some(occ => 
+            this.normalizeDate(occ.date).getTime() === newDate.getTime()
+          );
+          
+          if (!alreadyExists) {
+            occurrences.push({
+              date: newDate,
+              isOriginal: originalDate.getTime() === normalizedMasterDate.getTime(),
+              isException: true,
+              exceptionType: exception.exceptionType,
+              modifiedTitle: exception.newTitle,
+              modifiedNotes: exception.newNotes,
+              modifiedDate: newDate
+            });
+          }
+        }
+      }
+    });
+
     // Ordina per data
     return occurrences.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
@@ -322,5 +359,74 @@ export class RecurrenceService {
     );
     
     return !(exception && exception.exceptionType === 'CANCELLED');
+  }
+
+  /**
+   * Calcola la data di fine per terminare una serie ricorrente da una data specifica
+   * @param fromDate Data da cui terminare la serie (esclusa)
+   * @param masterDate Data del turno master
+   * @param recurrence Opzioni di ricorrenza
+   * @returns Data di fine per la serie originale
+   */
+  static calculateEndDateForSplit(
+    fromDate: Date,
+    masterDate: Date,
+    recurrence: RecurrenceOptions
+  ): Date {
+    const normalizedFrom = this.normalizeDate(fromDate);
+    const normalizedMaster = this.normalizeDate(masterDate);
+    const normalizedStart = this.normalizeDate(recurrence.startDate);
+    
+    // Se fromDate è il turno master o prima, termina immediatamente
+    if (normalizedFrom <= normalizedMaster) {
+      // Termina il giorno prima del turno master
+      const endDate = new Date(normalizedMaster);
+      endDate.setDate(endDate.getDate() - 1);
+      return endDate;
+    }
+    
+    // Trova l'ultima occorrenza valida prima di fromDate
+    let lastValidDate = normalizedMaster;
+    let currentDate = new Date(normalizedStart);
+    let occurrenceCount = 0;
+    
+    while (currentDate < normalizedFrom) {
+      if (this.isValidOccurrence(currentDate, masterDate, recurrence)) {
+        lastValidDate = new Date(currentDate);
+      }
+      
+      // Avanza alla prossima possibile occorrenza
+      if (recurrence.frequency === RecurrenceFrequency.DAILY) {
+        currentDate.setDate(currentDate.getDate() + recurrence.interval);
+      } else if (recurrence.frequency === RecurrenceFrequency.WEEKLY) {
+        currentDate.setDate(currentDate.getDate() + (recurrence.interval * 7));
+      }
+      
+      occurrenceCount++;
+      if (occurrenceCount > 1000) break; // Protezione
+    }
+    
+    return lastValidDate;
+  }
+
+  /**
+   * Crea le opzioni di ricorrenza per una nuova serie che inizia da una data specifica
+   * @param fromDate Data di inizio della nuova serie
+   * @param originalRecurrence Opzioni di ricorrenza originali
+   * @returns Nuove opzioni di ricorrenza
+   */
+  static createRecurrenceFromDate(
+    fromDate: Date,
+    originalRecurrence: RecurrenceOptions
+  ): RecurrenceOptions {
+    const normalizedFrom = this.normalizeDate(fromDate);
+    
+    return {
+      frequency: originalRecurrence.frequency,
+      interval: originalRecurrence.interval,
+      startDate: normalizedFrom,
+      endDate: originalRecurrence.endDate,
+      count: originalRecurrence.count ? undefined : undefined // Reset count per nuova serie
+    };
   }
 }

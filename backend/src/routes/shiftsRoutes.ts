@@ -9,7 +9,8 @@ import {
   updateShift,
   deleteShift,
   assignSites,
-  assignOperators
+  assignOperators,
+  getShiftExceptionsDebug
 } from "../controllers/shiftsController";
 
 const router = Router();
@@ -38,5 +39,8 @@ router.post('/:id/sites', requireAdminOrManager, assignSites);
 
 // POST /shifts/:id/operators - Assegna operatori a turno (solo Admin/Manager)
 router.post('/:id/operators', requireAdminOrManager, assignOperators);
+
+// GET /shifts/:id/exceptions - Debug: mostra eccezioni per un turno (temporaneo)
+router.get('/:id/exceptions', requireAuthenticated, getShiftExceptionsDebug);
 
 export default router;

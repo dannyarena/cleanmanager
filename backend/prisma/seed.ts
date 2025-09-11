@@ -255,7 +255,49 @@ async function main() {
     },
   });
 
-  console.log('✅ Turni creati: 6 turni con ricorrenze daily/weekly');
+  // === SERIE DIMOSTRATIVE PER MILESTONE 8 ===
+  
+  // Serie daily con eccezioni MODIFIED e CANCELLED
+  const serieDailyDemo = await prisma.shift.create({
+    data: {
+      title: 'Serie Daily Demo - Pulizia Quotidiana',
+      date: oggi,
+      notes: 'Serie dimostrativa per test con eccezioni',
+      tenantId: tenant.id,
+    },
+  });
+
+  await prisma.shiftRecurrence.create({
+    data: {
+      shiftId: serieDailyDemo.id,
+      frequency: RecurrenceFrequency.DAILY,
+      interval: 1,
+      startDate: oggi,
+      endDate: new Date(oggi.getTime() + 21 * 24 * 60 * 60 * 1000), // 21 giorni
+    },
+  });
+
+  // Serie weekly interval=2 per test this_and_future
+  const serieWeeklyDemo = await prisma.shift.create({
+    data: {
+      title: 'Serie Weekly Demo - Pulizia Bisettimanale',
+      date: oggi,
+      notes: 'Serie dimostrativa per test split this_and_future',
+      tenantId: tenant.id,
+    },
+  });
+
+  await prisma.shiftRecurrence.create({
+    data: {
+      shiftId: serieWeeklyDemo.id,
+      frequency: RecurrenceFrequency.WEEKLY,
+      interval: 2, // ogni 2 settimane
+      startDate: oggi,
+      count: 8, // 8 occorrenze (16 settimane)
+    },
+  });
+
+  console.log('✅ Turni creati: 8 turni con ricorrenze daily/weekly + 2 serie demo');
 
   // Assegna siti ai turni
   await prisma.shiftSite.createMany({
@@ -269,6 +311,11 @@ async function main() {
       { shiftId: turno4.id, siteId: sito4.id },
       { shiftId: turno5.id, siteId: sito1.id },
       { shiftId: turno6.id, siteId: sito6.id },
+      // Serie demo
+      { shiftId: serieDailyDemo.id, siteId: sito1.id },
+      { shiftId: serieDailyDemo.id, siteId: sito3.id },
+      { shiftId: serieWeeklyDemo.id, siteId: sito2.id },
+      { shiftId: serieWeeklyDemo.id, siteId: sito5.id },
     ],
   });
 
@@ -282,6 +329,10 @@ async function main() {
       { shiftId: turno4.id, userId: manager.id },
       { shiftId: turno5.id, userId: operatore1.id },
       { shiftId: turno6.id, userId: operatore2.id },
+      // Serie demo
+      { shiftId: serieDailyDemo.id, userId: operatore1.id },
+      { shiftId: serieWeeklyDemo.id, userId: operatore2.id },
+      { shiftId: serieWeeklyDemo.id, userId: manager.id },
     ],
   });
 
@@ -411,7 +462,29 @@ async function main() {
     },
   });
 
-  console.log('✅ Eccezioni create: 2 eccezioni per dimostrare la funzionalità');
+  // === ECCEZIONI PER SERIE DEMO ===
+  
+  // Eccezione MODIFIED per serie daily demo (giorno 3)
+  await prisma.shiftException.create({
+    data: {
+      shiftId: serieDailyDemo.id,
+      date: new Date(oggi.getTime() + 3 * 24 * 60 * 60 * 1000),
+      exceptionType: ExceptionType.MODIFIED,
+      newTitle: 'Serie Daily Demo - Pulizia Speciale',
+      newNotes: 'Modifica per test: pulizia con prodotti speciali',
+    },
+  });
+
+  // Eccezione CANCELLED per serie daily demo (giorno 7)
+  await prisma.shiftException.create({
+    data: {
+      shiftId: serieDailyDemo.id,
+      date: new Date(oggi.getTime() + 7 * 24 * 60 * 60 * 1000),
+      exceptionType: ExceptionType.CANCELLED,
+    },
+  });
+
+  console.log('✅ Eccezioni create: 4 eccezioni per dimostrare la funzionalità (incluse serie demo)');
 
   console.log('\n🎉 Seeding completato con successo!');
   console.log('\n📊 Riepilogo dati creati:');
@@ -419,9 +492,9 @@ async function main() {
   console.log(`   • 4 Utenti: 1 Admin, 1 Manager, 2 Operatori`);
   console.log(`   • 3 Clienti aziendali`);
   console.log(`   • 6 Siti distribuiti tra i clienti`);
-  console.log(`   • 6 Turni (alcuni con ricorrenze daily/weekly)`);
+  console.log(`   • 8 Turni (6 base + 2 serie demo con ricorrenze)`);
   console.log(`   • 6 Checklist con 4 voci ciascuna`);
-  console.log(`   • 2 Eccezioni per dimostrare la funzionalità`);
+  console.log(`   • 4 Eccezioni (2 base + 2 per serie demo: MODIFIED e CANCELLED)`);
   console.log('\n🔑 Credenziali di accesso:');
   console.log('   Admin: admin@cleanmanager.demo / password123');
   console.log('   Manager: manager@cleanmanager.demo / password123');
