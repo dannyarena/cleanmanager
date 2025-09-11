@@ -493,6 +493,42 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
           });
         }
         
+        // Aggiorna siti se specificati
+        if (siteIds !== undefined) {
+          // Rimuovi tutte le assegnazioni esistenti
+          await tx.shiftSite.deleteMany({
+            where: { shiftId: shift.id }
+          });
+          
+          // Aggiungi le nuove assegnazioni
+          if (siteIds.length > 0) {
+            await tx.shiftSite.createMany({
+              data: siteIds.map(siteId => ({
+                shiftId: shift.id,
+                siteId: siteId
+              }))
+            });
+          }
+        }
+        
+        // Aggiorna operatori se specificati
+        if (operatorIds !== undefined) {
+          // Rimuovi tutte le assegnazioni esistenti
+          await tx.shiftOperator.deleteMany({
+            where: { shiftId: shift.id }
+          });
+          
+          // Aggiungi le nuove assegnazioni
+          if (operatorIds.length > 0) {
+            await tx.shiftOperator.createMany({
+              data: operatorIds.map(operatorId => ({
+                shiftId: shift.id,
+                userId: operatorId
+              }))
+            });
+          }
+        }
+        
         // Aggiorna la ricorrenza se presente
         if (shift.shiftRecurrence && Object.keys(recurrenceUpdateData).length > 0) {
           await tx.shiftRecurrence.update({
@@ -535,7 +571,7 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         count: recurrence?.count !== undefined ? recurrence.count : shift.shiftRecurrence.count
       };
       
-      await prisma.$transaction(async (tx) => {
+      const newShiftResult = await prisma.$transaction(async (tx) => {
         // 1. Crea nuovo master con startDate=pivotDate + nuove proprietà
         const newShift = await tx.shift.create({
           data: {
@@ -547,26 +583,29 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
           include: { shiftRecurrence: true }
         });
         
-        // 2. Copia N:N (ShiftSite, ShiftOperator) dal master originale
-        if (shift.shiftSites.length > 0) {
+        // 2. Assegna siti (nuovi se specificati, altrimenti copia dal master originale)
+        const sitesToAssign = siteIds !== undefined ? siteIds : shift.shiftSites.map(ss => ss.siteId);
+        if (sitesToAssign.length > 0) {
           await tx.shiftSite.createMany({
-            data: shift.shiftSites.map(ss => ({
+            data: sitesToAssign.map(siteId => ({
               shiftId: newShift.id,
-              siteId: ss.siteId
+              siteId: siteId
             }))
           });
         }
         
-        if (shift.shiftOperators.length > 0) {
+        // 3. Assegna operatori (nuovi se specificati, altrimenti copia dal master originale)
+        const operatorsToAssign = operatorIds !== undefined ? operatorIds : shift.shiftOperators.map(so => so.userId);
+        if (operatorsToAssign.length > 0) {
           await tx.shiftOperator.createMany({
-            data: shift.shiftOperators.map(so => ({
+            data: operatorsToAssign.map(operatorId => ({
               shiftId: newShift.id,
-              userId: so.userId
+              userId: operatorId
             }))
           });
         }
         
-        // 3. Migra ShiftException con date>=pivotDate al nuovo master
+        // 4. Migra ShiftException con date>=pivotDate al nuovo master
         const futureExceptions = await tx.shiftException.findMany({
           where: {
             shiftId: shift.id,
@@ -594,7 +633,7 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
           });
         }
         
-        // 4. Accorcia endDate del vecchio master a pivotDate - 1 giorno
+        // 5. Accorcia endDate del vecchio master a pivotDate - 1 giorno
         const endDateForOriginal = new Date(pivotDate);
         endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
         
@@ -605,10 +644,12 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         
         // Recupera il nuovo turno creato
         const updatedShift = await getShiftByIdHelper(newShift.id, tenantId, tx);
-        return res.json({
-          result: 'series_split',
-          shift: updatedShift
-        });
+        return updatedShift;
+      });
+      
+      return res.json({
+        result: 'series_split',
+        shift: newShiftResult
       });
     } else if (shift.shiftRecurrence && updateType === 'single') {
       return res.status(400).json({ 
