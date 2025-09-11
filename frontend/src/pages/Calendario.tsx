@@ -104,6 +104,14 @@ export function Calendario() {
     loadData()
   }, [currentWeek])
 
+  // Apri modale se arrivo con ?action=create
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'create') {
+      setShowNewShiftModal(true)
+    }
+  }, [])
+
   // Gestori eventi
   const handleNewShift = (date?: Date) => {
     setSelectedDate(date || null)

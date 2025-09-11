@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Users, Building2, UserCheck, Plus, Clock, AlertCircle, TrendingUp, CheckSquare } from 'lucide-react'
+import { Calendar, Users, Building2, Plus, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
+// badge not used on this page
 import { apiService } from '../services/api'
-import { Client, Site, User, Shift } from '../types'
+import { User, Shift } from '../types'
 import { authService } from '../services/auth'
 import { formatDate } from '../lib/utils'
 
@@ -20,6 +20,7 @@ interface DashboardStats {
     shiftsChange: number
     operatorsChange: number
     sitesChange: number
+    clientsChange: number
     checklistChange: number
   }
 }
@@ -36,12 +37,13 @@ export function Dashboard() {
       shiftsChange: 0,
       operatorsChange: 0,
       sitesChange: 0,
+      clientsChange: 0,
       checklistChange: 0
     }
   })
   const [recentShifts, setRecentShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<User | null>(authService.getUser())
+  const user: User | null = authService.getUser()
 
   useEffect(() => {
     loadDashboardData()
@@ -84,6 +86,7 @@ export function Dashboard() {
           shiftsChange: 2,
           operatorsChange: 1,
           sitesChange: 3,
+            clientsChange: 1,
           checklistChange: 5
         }
       })
@@ -127,23 +130,23 @@ export function Dashboard() {
       trendText: 'nuovo operatore'
     },
     {
-      title: 'Checklist da Fare',
-      value: stats.pendingChecklists,
-      icon: Clock,
+      title: 'Clienti',
+      value: stats.totalClients,
+      icon: Users,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
-      href: '/calendario',
-      trend: null,
-      trendText: stats.pendingChecklists > 0 ? 'Richiedono attenzione' : 'Tutto completato!'
+      href: '/clienti',
+      trend: stats.trends.clientsChange,
+      trendText: 'nuovi clienti'
     },
     {
-      title: 'Completamento',
-      value: `${stats.checklistCompletion}%`,
-      icon: CheckSquare,
+      title: 'Siti',
+      value: stats.totalSites,
+      icon: Building2,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
-      href: '/calendario',
-      trend: stats.trends.checklistChange,
+      href: '/siti',
+      trend: stats.trends.sitesChange,
       trendText: 'questa settimana'
     }
   ]
@@ -186,19 +189,17 @@ export function Dashboard() {
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 flex flex-col justify-between">
                       <p className="text-sm font-medium text-gray-600">
                         {stat.title}
                       </p>
                       <p className="text-3xl font-bold text-gray-900">
                         {stat.value}
                       </p>
-                      <div className="flex items-center mt-2 text-sm">
+                      <div className="flex items-center mt-2 text-sm min-h-6">
                         {stat.trend !== null && getTrendIcon(stat.trend)}
                         <span className={`${stat.trend !== null ? 'ml-1' : ''} ${
-                          stat.trend === null 
-                            ? (stat.title === 'Checklist da Fare' && stats.pendingChecklists > 0 ? 'text-orange-600' : 'text-green-600')
-                            : stat.trend >= 0 ? 'text-green-600' : 'text-red-600'
+                          stat.trend === null ? 'text-green-600' : (stat.trend >= 0 ? 'text-green-600' : 'text-red-600')
                         }`}>
                           {stat.trend !== null && stat.trend > 0 ? '+' : ''}
                           {stat.trend !== null ? `${stat.trend} ` : ''}
