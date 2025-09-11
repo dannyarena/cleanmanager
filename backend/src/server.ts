@@ -8,6 +8,7 @@ import clientsRoutes from './routes/clientsRoutes';
 import sitesRoutes from './routes/sitesRoutes';
 import operatorsRoutes from './routes/operatorsRoutes';
 import shiftsRoutes from './routes/shiftsRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 // Carica le variabili d'ambiente
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -34,6 +35,7 @@ app.use('/api/clients', clientsRoutes);
 app.use('/api/sites', sitesRoutes);
 app.use('/api/operators', operatorsRoutes);
 app.use('/api/shifts', shiftsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Route di benvenuto
 app.get('/api/welcome', (req, res) => {

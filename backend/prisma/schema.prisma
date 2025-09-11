@@ -23,8 +23,34 @@ model Tenant {
   sites      Site[]
   shifts     Shift[]
   checklists Checklist[]
+  settings   TenantSettings?
 
   @@map("tenants")
+}
+
+// Tabella tenant_settings (impostazioni per tenant)
+model TenantSettings {
+  id                           String              @id @default(cuid())
+  tenantId                     String              @unique
+  companyName                  String
+  primaryColor                 String?             @default("#2563eb")
+  theme                        Theme               @default(LIGHT)
+  workingDays                  Int[]               @default([1, 2, 3, 4, 5, 6])
+  recurrenceDefaultFrequency   RecurrenceFrequency @default(WEEKLY)
+  recurrenceDefaultInterval    Int                 @default(1)
+  emailEnabled                 Boolean             @default(false)
+  createdAt                    DateTime            @default(now())
+  updatedAt                    DateTime            @updatedAt
+
+  // Relazioni
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+enum Theme {
+  LIGHT
+  DARK
 }
 
 // Tabella users (utenti con ruoli)

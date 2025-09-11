@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, RecurrenceFrequency, ExceptionType } from '@prisma/client';
+import { PrismaClient, UserRole, RecurrenceFrequency, ExceptionType, Theme } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -17,6 +17,7 @@ async function main() {
   await prisma.site.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.tenantSettings.deleteMany();
   await prisma.tenant.deleteMany();
 
   // Crea tenant demo
@@ -27,6 +28,22 @@ async function main() {
   });
 
   console.log('✅ Tenant creato:', tenant.name);
+
+  // Crea TenantSettings di default
+  const tenantSettings = await prisma.tenantSettings.create({
+    data: {
+      tenantId: tenant.id,
+      companyName: tenant.name,
+      primaryColor: '#2563eb',
+      theme: Theme.LIGHT,
+      workingDays: [1, 2, 3, 4, 5, 6], // Lun-Sab
+      recurrenceDefaultFrequency: RecurrenceFrequency.WEEKLY,
+      recurrenceDefaultInterval: 1,
+      emailEnabled: false,
+    },
+  });
+
+  console.log('✅ TenantSettings creato con valori di default');
 
   // Hash password per tutti gli utenti
   const hashedPassword = await bcrypt.hash('password123', 10);
@@ -489,6 +506,7 @@ async function main() {
   console.log('\n🎉 Seeding completato con successo!');
   console.log('\n📊 Riepilogo dati creati:');
   console.log(`   • 1 Tenant: ${tenant.name}`);
+  console.log(`   • 1 TenantSettings con valori di default`);
   console.log(`   • 4 Utenti: 1 Admin, 1 Manager, 2 Operatori`);
   console.log(`   • 3 Clienti aziendali`);
   console.log(`   • 6 Siti distribuiti tra i clienti`);

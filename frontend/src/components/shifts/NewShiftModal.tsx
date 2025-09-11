@@ -70,22 +70,49 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
   const [siteQuery, setSiteQuery] = useState('')
   const [opQuery, setOpQuery] = useState('')
 
-  // Reset form quando si apre il modal
+  // Reset form quando si apre il modal e carica defaults da settings
   useEffect(() => {
     if (open) {
-      setFormData({
-        title: '',
-        date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        notes: '',
-        siteIds: [],
-        operatorIds: [],
-        hasRecurrence: false,
-        recurrence: {
-          frequency: 'weekly',
-          interval: 1,
-          endType: 'never'
+      // Carica defaults da settings
+      const loadDefaults = async () => {
+        try {
+          const settings = await apiService.getSettings()
+          const defaultFrequency = settings.recurrenceDefaultFrequency?.toLowerCase() || 'weekly'
+          const defaultInterval = settings.recurrenceDefaultInterval || 1
+          
+          setFormData({
+            title: '',
+            date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            notes: '',
+            siteIds: [],
+            operatorIds: [],
+            hasRecurrence: false,
+            recurrence: {
+              frequency: defaultFrequency as 'daily' | 'weekly',
+              interval: defaultInterval,
+              endType: 'never'
+            }
+          })
+        } catch (error) {
+          console.error('Errore nel caricamento settings:', error)
+          // Fallback ai defaults hardcoded
+          setFormData({
+            title: '',
+            date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            notes: '',
+            siteIds: [],
+            operatorIds: [],
+            hasRecurrence: false,
+            recurrence: {
+              frequency: 'weekly',
+              interval: 1,
+              endType: 'never'
+            }
+          })
         }
-      })
+      }
+      
+      loadDefaults()
       setError(null)
       setConflicts([])
       setShowConflicts(false)

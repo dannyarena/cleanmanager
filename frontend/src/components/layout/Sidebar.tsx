@@ -18,6 +18,7 @@ const navigation = [
   { name: 'Siti', href: '/siti', icon: Building2 },
   { name: 'Operatori', href: '/operatori', icon: UserCheck },
   { name: 'Calendario', href: '/calendario', icon: Calendar },
+  { name: 'Impostazioni', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {

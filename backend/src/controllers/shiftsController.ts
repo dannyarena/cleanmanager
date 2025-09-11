@@ -29,6 +29,13 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
 
     const { from, to, q, site_id, operator_id, page = 1, limit = 50 } = req.query as QueryShiftsParams;
     
+    // Recupera TenantSettings per i giorni lavorativi
+    const tenantSettings = await prisma.tenantSettings.findFirst({
+      where: { tenantId },
+      select: { workingDays: true }
+    });
+    const workingDays = tenantSettings?.workingDays || [1, 2, 3, 4, 5, 6]; // Default: Lun-Sab
+    
     // Calcola range di date (default: settimana corrente)
     const now = new Date();
     const startOfWeek = new Date(now);
@@ -129,8 +136,16 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
           exceptions
         );
         
+        // Filtra occorrenze DAILY per giorni lavorativi
+        const filteredOccurrences = shift.shiftRecurrence.frequency === 'DAILY' 
+          ? occurrences.filter(occ => {
+              const dayOfWeek = occ.date.getDay() === 0 ? 7 : occ.date.getDay(); // Domenica = 7
+              return workingDays.includes(dayOfWeek);
+            })
+          : occurrences;
+        
         // Crea oggetti ShiftResponse per ogni occorrenza
-        for (const occurrence of occurrences) {
+        for (const occurrence of filteredOccurrences) {
           // Determina siti e operatori per questa occorrenza
           let occurrenceSites = shift.shiftSites;
           let occurrenceOperators = shift.shiftOperators;
@@ -321,14 +336,32 @@ export const createShift: RequestHandler = async (req: Request, res: Response) =
     if (isNaN(shiftDate.getTime())) {
       return res.status(400).json({ error: "Data non valida" });
     }
+
+    // Applica defaults da TenantSettings se ricorrenza specificata ma mancano frequency/interval
+    let finalRecurrence = recurrence;
+    if (recurrence && (!recurrence.frequency || !recurrence.interval)) {
+      const tenantSettings = await prisma.tenantSettings.findUnique({
+        where: { tenantId },
+        select: { recurrenceDefaultFrequency: true, recurrenceDefaultInterval: true }
+      });
+      
+      const defaultFrequency = tenantSettings?.recurrenceDefaultFrequency || 'WEEKLY';
+      const defaultInterval = tenantSettings?.recurrenceDefaultInterval || 1;
+      
+      finalRecurrence = {
+        ...recurrence,
+        frequency: recurrence.frequency || defaultFrequency.toLowerCase(),
+        interval: recurrence.interval || defaultInterval
+      };
+    }
     
     // Verifica conflitti operatori
     let conflicts: OperatorConflict[] = [];
     
-    if (recurrence) {
+    if (finalRecurrence) {
       // Per turni ricorrenti, controlla conflitti su tutto il range della ricorrenza
-      const startDate = recurrence.startDate ? new Date(recurrence.startDate) : shiftDate;
-      const endDate = recurrence.endDate ? new Date(recurrence.endDate) : new Date('2030-12-31'); // Data molto futura se non specificata
+      const startDate = finalRecurrence.startDate ? new Date(finalRecurrence.startDate) : shiftDate;
+      const endDate = finalRecurrence.endDate ? new Date(finalRecurrence.endDate) : new Date('2030-12-31'); // Data molto futura se non specificata
       
       conflicts = await checkOperatorConflictsInRange(operatorIds, startDate, endDate, tenantId);
     } else {
@@ -349,30 +382,30 @@ export const createShift: RequestHandler = async (req: Request, res: Response) =
       });
       
       // Crea ricorrenza se specificata
-      if (recurrence) {
+      if (finalRecurrence) {
         // Valida startDate della ricorrenza
-        if (!recurrence.startDate) {
+        if (!finalRecurrence.startDate) {
           throw new Error("La data di inizio della ricorrenza è obbligatoria");
         }
         
-        const recurrenceStartDate = new Date(recurrence.startDate);
+        const recurrenceStartDate = new Date(finalRecurrence.startDate);
         if (isNaN(recurrenceStartDate.getTime())) {
           throw new Error("Data di inizio della ricorrenza non valida");
         }
         
         // Valida ricorrenza
         const recurrenceOptions = {
-          frequency: recurrence.frequency === 'daily' ? RecurrenceFrequency.DAILY : RecurrenceFrequency.WEEKLY,
-          interval: recurrence.interval,
+          frequency: finalRecurrence.frequency === 'daily' ? RecurrenceFrequency.DAILY : RecurrenceFrequency.WEEKLY,
+          interval: finalRecurrence.interval,
           startDate: recurrenceStartDate,
-          endDate: recurrence.endDate ? (() => {
-            const endDate = new Date(recurrence.endDate!);
+          endDate: finalRecurrence.endDate ? (() => {
+            const endDate = new Date(finalRecurrence.endDate!);
             if (isNaN(endDate.getTime())) {
               throw new Error("Data di fine della ricorrenza non valida");
             }
             return endDate;
           })() : undefined,
-          count: recurrence.count
+          count: finalRecurrence.count
         };
         
         const validationErrors = RecurrenceService.validateRecurrence(recurrenceOptions);

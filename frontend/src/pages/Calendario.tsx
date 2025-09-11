@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
-import { Calendar, Plus, ChevronLeft, ChevronRight, Users, MapPin } from 'lucide-react'
+import { Calendar, Plus, ChevronLeft, ChevronRight, Users, MapPin, Info } from 'lucide-react'
 import { apiService } from '../services/api'
 import { Shift, Site, User } from '../types'
 import { NewShiftModal } from '../components/shifts/NewShiftModal'
 import { ShiftDetailModal } from '../components/shifts/ShiftDetailModal'
+import { useSettings } from '../contexts/SettingsContext'
 
 interface CalendarDay {
   date: Date
@@ -15,6 +16,7 @@ interface CalendarDay {
 }
 
 export function Calendario() {
+  const { settings } = useSettings()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [shifts, setShifts] = useState<Shift[]>([])
   const [sites, setSites] = useState<Site[]>([])
@@ -165,6 +167,24 @@ export function Calendario() {
     return `${formatDate(start)} - ${formatDate(end)}`
   }
 
+  // Formatta giorni lavorativi per il badge
+  const formatWorkingDays = () => {
+    if (!settings?.workingDays || settings.workingDays.length === 0) {
+      return 'Nessun giorno lavorativo'
+    }
+    
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
+    const workingDayNames = settings.workingDays
+      .sort((a, b) => a - b)
+      .map(day => dayNames[day])
+    
+    if (workingDayNames.length === 7) {
+      return 'Tutti i giorni'
+    }
+    
+    return workingDayNames.join(', ')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -178,7 +198,15 @@ export function Calendario() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendario Turni</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900">Calendario Turni</h1>
+            {settings && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Info className="w-3 h-3" />
+                Giorni lavorativi: {formatWorkingDays()}
+              </Badge>
+            )}
+          </div>
           <p className="text-gray-600">{formatWeekRange()}</p>
         </div>
         <div className="flex items-center gap-2">
