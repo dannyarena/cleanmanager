@@ -24,6 +24,8 @@ export interface ShiftException {
   newTitle?: string;
   newNotes?: string;
   newDate?: Date;
+  siteIds?: string[];
+  operatorIds?: string[];
 }
 
 /**

@@ -43,6 +43,7 @@ model User {
   // Relazioni
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shiftOperators ShiftOperator[]
+  exceptionOperators ShiftExceptionOperator[]
 
   @@map("users")
 }
@@ -86,6 +87,7 @@ model Site {
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shiftSites ShiftSite[]
   checklists Checklist[]
+  exceptionSites ShiftExceptionSite[]
 
   @@map("sites")
 }
@@ -211,10 +213,42 @@ model ShiftException {
 
   // Relazioni
   shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  exceptionSites ShiftExceptionSite[]
+  exceptionOperators ShiftExceptionOperator[]
 
   @@unique([shiftId, date])
   @@index([date]) // Per query veloci su occorrenze spostate
   @@map("shift_exceptions")
+}
+
+// Tabella shift_exception_sites (siti specifici per eccezioni)
+model ShiftExceptionSite {
+  id               String         @id @default(cuid())
+  shiftExceptionId String
+  siteId           String
+  createdAt        DateTime       @default(now())
+
+  // Relazioni
+  shiftException ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
+  site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftExceptionId, siteId])
+  @@map("shift_exception_sites")
+}
+
+// Tabella shift_exception_operators (operatori specifici per eccezioni)
+model ShiftExceptionOperator {
+  id               String         @id @default(cuid())
+  shiftExceptionId String
+  userId           String
+  createdAt        DateTime       @default(now())
+
+  // Relazioni
+  shiftException ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftExceptionId, userId])
+  @@map("shift_exception_operators")
 }
 
 enum ExceptionType {

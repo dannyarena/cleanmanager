@@ -131,6 +131,67 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
         
         // Crea oggetti ShiftResponse per ogni occorrenza
         for (const occurrence of occurrences) {
+          // Determina siti e operatori per questa occorrenza
+          let occurrenceSites = shift.shiftSites;
+          let occurrenceOperators = shift.shiftOperators;
+          
+          if (occurrence.isException) {
+            const exception = exceptions.find(ex => ex.date.getTime() === occurrence.date.getTime());
+            if (exception) {
+              // --- SITI ---
+              if (Array.isArray(exception.siteIds)) {
+                const siteIds = exception.siteIds;
+                
+                // Quelli già nel master
+                const baseSites = shift.shiftSites.filter(ss => siteIds.includes(ss.siteId));
+                
+                // Quelli mancanti (presenti nell'eccezione ma non nel master)
+                const missingSiteIds = siteIds.filter(
+                  id => !shift.shiftSites.some(ss => ss.siteId === id)
+                );
+                
+                let extraSites: typeof shift.shiftSites = [];
+                if (missingSiteIds.length > 0) {
+                  const dbSites = await prisma.site.findMany({
+                    where: { id: { in: missingSiteIds }, tenantId },
+                    include: { client: { select: { id: true, name: true } } }
+                  });
+                  // normalizza alla stessa shape di shift.shiftSites: { siteId, site }
+                  extraSites = dbSites.map(s => ({ siteId: s.id, site: s }));
+                }
+                
+                occurrenceSites = [...baseSites, ...extraSites];
+              }
+              
+              // --- OPERATORI ---
+              if (Array.isArray(exception.operatorIds)) {
+                const operatorIds = exception.operatorIds;
+                
+                // Quelli già nel master
+                const baseOps = shift.shiftOperators.filter(so => operatorIds.includes(so.userId));
+                
+                // Quelli mancanti (presenti nell'eccezione ma non nel master)
+                const missingOpIds = operatorIds.filter(
+                  id => !shift.shiftOperators.some(so => so.userId === id)
+                );
+                
+                let extraOps: typeof shift.shiftOperators = [];
+                if (missingOpIds.length > 0) {
+                  const dbUsers = await prisma.user.findMany({
+                    where: { id: { in: missingOpIds }, tenantId },
+                    select: { id: true, firstName: true, lastName: true, isManager: true }
+                  });
+                  // normalizza alla stessa shape di shift.shiftOperators: { userId, user }
+                  extraOps = dbUsers.map(u => ({ userId: u.id, user: u }));
+                }
+                
+                occurrenceOperators = [...baseOps, ...extraOps];
+              }
+              
+              // title/notes override restano invariati (già gestiti)
+            }
+          }
+          
           allOccurrences.push({
             id: occurrence.isOriginal ? shift.id : createOccurrenceId(shift.id, occurrence.date),
             title: occurrence.isException && occurrence.modifiedTitle ? occurrence.modifiedTitle : shift.title,
@@ -139,13 +200,13 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
             tenantId: shift.tenantId,
             createdAt: shift.createdAt,
             updatedAt: shift.updatedAt,
-            sites: shift.shiftSites.map(ss => ({
+            sites: occurrenceSites.map(ss => ({
               id: ss.site.id,
               name: ss.site.name,
               address: ss.site.address,
               client: ss.site.client
             })),
-            operators: shift.shiftOperators.map(so => ({
+            operators: occurrenceOperators.map(so => ({
               id: so.user.id,
               firstName: so.user.firstName,
               lastName: so.user.lastName,
@@ -161,8 +222,8 @@ export const getShifts: RequestHandler = async (req: Request, res: Response) => 
             },
             isRecurring: true,
             _count: {
-              sites: shift._count?.shiftSites || 0,
-              operators: shift._count?.shiftOperators || 0
+              sites: occurrenceSites.length,
+              operators: occurrenceOperators.length
             }
           });
         }
@@ -421,13 +482,27 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         const newNotes = override?.notes || notes;
         const newDate = override?.date || date ? new Date(override?.date || date!) : undefined;
         
+        console.log('🔍 UpdateShift SINGLE - Dati ricevuti:', {
+          masterId,
+          targetDate,
+          newTitle,
+          newNotes,
+          newDate,
+          siteIds: siteIds?.length || 0,
+          operatorIds: operatorIds?.length || 0,
+          siteIdsArray: siteIds,
+          operatorIdsArray: operatorIds
+        });
+        
         await createShiftException(
           masterId, 
           targetDate, 
           ExceptionType.MODIFIED,
           newTitle?.trim(),
           newNotes?.trim(),
-          newDate
+          newDate,
+          siteIds,
+          operatorIds
         );
         
         // Recupera turno aggiornato con le modifiche dell'eccezione
@@ -1293,12 +1368,73 @@ export const getShiftById: RequestHandler = async (req: Request, res: Response) 
             return res.status(400).json({ error: 'ID turno non valido' });
           }
           
+          // Determina siti e operatori per questa occorrenza
+          let occurrenceSites = masterShift.shiftSites;
+          let occurrenceOperators = masterShift.shiftOperators;
+          
+          if (occurrence.isException) {
+            const exception = exceptions.find(ex => ex.date.getTime() === occurrence.date.getTime());
+            if (exception) {
+              // --- SITI ---
+              if (Array.isArray(exception.siteIds)) {
+                const siteIds = exception.siteIds;
+                
+                // Quelli già nel master
+                const baseSites = masterShift.shiftSites.filter(ss => siteIds.includes(ss.siteId));
+                
+                // Quelli mancanti (presenti nell'eccezione ma non nel master)
+                const missingSiteIds = siteIds.filter(
+                  id => !masterShift.shiftSites.some(ss => ss.siteId === id)
+                );
+                
+                let extraSites: typeof masterShift.shiftSites = [];
+                if (missingSiteIds.length > 0) {
+                  const dbSites = await prisma.site.findMany({
+                    where: { id: { in: missingSiteIds }, tenantId },
+                    include: { client: { select: { id: true, name: true } } }
+                  });
+                  // normalizza alla stessa shape di shift.shiftSites: { siteId, site }
+                  extraSites = dbSites.map(s => ({ siteId: s.id, site: s }));
+                }
+                
+                occurrenceSites = [...baseSites, ...extraSites];
+              }
+              
+              // --- OPERATORI ---
+              if (Array.isArray(exception.operatorIds)) {
+                const operatorIds = exception.operatorIds;
+                
+                // Quelli già nel master
+                const baseOps = masterShift.shiftOperators.filter(so => operatorIds.includes(so.userId));
+                
+                // Quelli mancanti (presenti nell'eccezione ma non nel master)
+                const missingOpIds = operatorIds.filter(
+                  id => !masterShift.shiftOperators.some(so => so.userId === id)
+                );
+                
+                let extraOps: typeof masterShift.shiftOperators = [];
+                if (missingOpIds.length > 0) {
+                  const dbUsers = await prisma.user.findMany({
+                    where: { id: { in: missingOpIds }, tenantId },
+                    select: { id: true, firstName: true, lastName: true, isManager: true }
+                  });
+                  // normalizza alla stessa shape di shift.shiftOperators: { userId, user }
+                  extraOps = dbUsers.map(u => ({ userId: u.id, user: u }));
+                }
+                
+                occurrenceOperators = [...baseOps, ...extraOps];
+              }
+            }
+          }
+          
           shift = {
             ...masterShift,
             id,
             date: occurrence.date,
             title: (occurrence.isException && occurrence.modifiedTitle) ? occurrence.modifiedTitle : masterShift.title,
-            notes: (occurrence.isException && occurrence.modifiedNotes) ? occurrence.modifiedNotes : (masterShift.notes || null)
+            notes: (occurrence.isException && occurrence.modifiedNotes) ? occurrence.modifiedNotes : (masterShift.notes || null),
+            shiftSites: occurrenceSites,
+            shiftOperators: occurrenceOperators
           } as any;
           
           // Aggiungi proprietà extra per l'occorrenza
@@ -1535,6 +1671,14 @@ async function getShiftExceptions(shiftId: string, tenantId: string): Promise<Sh
       shiftId,
       shift: { tenantId }
     },
+    include: {
+      exceptionSites: {
+        select: { siteId: true }
+      },
+      exceptionOperators: {
+        select: { userId: true }
+      }
+    },
     orderBy: { date: 'asc' }
   });
 
@@ -1543,7 +1687,9 @@ async function getShiftExceptions(shiftId: string, tenantId: string): Promise<Sh
     exceptionType: ex.exceptionType,
     newTitle: ex.newTitle || undefined,
     newNotes: ex.newNotes || undefined,
-    newDate: ex.newDate || undefined
+    newDate: ex.newDate || undefined,
+    siteIds: ex.exceptionSites.map(es => es.siteId),
+    operatorIds: ex.exceptionOperators.map(eo => eo.userId)
   }));
 }
 
@@ -1556,36 +1702,90 @@ async function createShiftException(
   exceptionType: ExceptionType,
   newTitle?: string,
   newNotes?: string,
-  newDate?: Date
+  newDate?: Date,
+  siteIds?: string[],
+  operatorIds?: string[]
 ): Promise<void> {
   const normalizedDate = new Date(date);
-  normalizedDate.setHours(0, 0, 0, 0);
+  normalizedDate.setUTCHours(0, 0, 0, 0);
 
   const normalizedNewDate = newDate ? new Date(newDate) : undefined;
   if (normalizedNewDate) {
-    normalizedNewDate.setHours(0, 0, 0, 0);
+    normalizedNewDate.setUTCHours(0, 0, 0, 0);
   }
 
-  await prisma.shiftException.upsert({
-    where: {
-      shiftId_date: {
+  console.log('🔧 CreateShiftException - Parametri ricevuti:', {
+    shiftId,
+    date: normalizedDate,
+    exceptionType,
+    newTitle,
+    newNotes,
+    newDate: normalizedNewDate,
+    siteIds: siteIds?.length || 0,
+    operatorIds: operatorIds?.length || 0,
+    siteIdsArray: siteIds,
+    operatorIdsArray: operatorIds
+  });
+
+  await prisma.$transaction(async (tx) => {
+    // Crea o aggiorna l'eccezione
+    const exception = await tx.shiftException.upsert({
+      where: {
+        shiftId_date: {
+          shiftId,
+          date: normalizedDate
+        }
+      },
+      update: {
+        exceptionType,
+        newTitle,
+        newNotes,
+        newDate: normalizedNewDate
+      },
+      create: {
         shiftId,
-        date: normalizedDate
+        date: normalizedDate,
+        exceptionType,
+        newTitle,
+        newNotes,
+        newDate: normalizedNewDate
       }
-    },
-    update: {
-      exceptionType,
-      newTitle,
-      newNotes,
-      newDate: normalizedNewDate
-    },
-    create: {
-      shiftId,
-      date: normalizedDate,
-      exceptionType,
-      newTitle,
-      newNotes,
-      newDate: normalizedNewDate
+    });
+
+    // Gestisci siti specifici per l'eccezione
+    if (siteIds !== undefined) {
+      // Rimuovi assegnazioni esistenti
+      await tx.shiftExceptionSite.deleteMany({
+        where: { shiftExceptionId: exception.id }
+      });
+      
+      // Aggiungi nuove assegnazioni
+      if (siteIds.length > 0) {
+        await tx.shiftExceptionSite.createMany({
+          data: siteIds.map(siteId => ({
+            shiftExceptionId: exception.id,
+            siteId
+          }))
+        });
+      }
+    }
+
+    // Gestisci operatori specifici per l'eccezione
+    if (operatorIds !== undefined) {
+      // Rimuovi assegnazioni esistenti
+      await tx.shiftExceptionOperator.deleteMany({
+        where: { shiftExceptionId: exception.id }
+      });
+      
+      // Aggiungi nuove assegnazioni
+      if (operatorIds.length > 0) {
+        await tx.shiftExceptionOperator.createMany({
+          data: operatorIds.map(operatorId => ({
+            shiftExceptionId: exception.id,
+            userId: operatorId
+          }))
+        });
+      }
     }
   });
 }

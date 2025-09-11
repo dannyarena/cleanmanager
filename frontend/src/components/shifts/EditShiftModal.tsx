@@ -154,9 +154,13 @@ export function EditShiftModal({ open, onClose, shift, sites, operators, onShift
         applyTo: updateData.applyTo
       }
 
-      // Estrai l'ID originale rimuovendo il suffisso _YYYY-MM-DD se presente
-      const originalShiftId = shift.id.includes('_') ? shift.id.split('_')[0] : shift.id
-      const response = await apiService.updateShift(originalShiftId, updateData, options)
+      // Per updateType 'single' su turni ricorrenti, usa l'ID completo dell'occorrenza
+      // Per 'series' e 'this_and_future', usa l'ID del master
+      const shiftId = (shift.recurrence && updateData.applyTo === 'single') 
+        ? shift.id // ID completo dell'occorrenza (masterId_YYYY-MM-DD)
+        : (shift.id.includes('_') ? shift.id.split('_')[0] : shift.id) // ID del master
+      
+      const response = await apiService.updateShift(shiftId, updateData, options)
       
       // Gestisci warnings.operatorConflicts[] dalla risposta del backend
       if (response.warnings?.operatorConflicts && response.warnings.operatorConflicts.length > 0) {
