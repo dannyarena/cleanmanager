@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, ConfirmDialog } from '../ui/dialog'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
@@ -49,6 +49,7 @@ export function ShiftDetailModal({
   const { addToast } = useToast()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSimpleDeleteDialog, setShowSimpleDeleteDialog] = useState(false)
   const [deleteAction, setDeleteAction] = useState<DeleteAction>({ type: 'occurrence', confirmed: false })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +61,7 @@ export function ShiftDetailModal({
     if (shift) {
       setError(null)
       setShowDeleteConfirm(false)
+      setShowSimpleDeleteDialog(false)
       setDeleteAction({ type: 'single', confirmed: false })
       loadChecklists()
     }
@@ -97,18 +99,12 @@ export function ShiftDetailModal({
     setShowEditModal(true)
   }
 
-  const handleDelete = async () => {
+  const executeDelete = async () => {
     if (!shift) return
 
     try {
       setLoading(true)
       setError(null)
-
-      // Se è un turno ricorrente, chiedi se eliminare solo questa occorrenza o tutta la serie
-      if (shift.recurrence && !showDeleteConfirm) {
-        setShowDeleteConfirm(true)
-        return
-      }
 
       // Determina il tipo di eliminazione richiesto dalla UI
       const uiDeleteType = shift.recurrence ? deleteAction.type : 'single';
@@ -154,6 +150,25 @@ export function ShiftDetailModal({
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDelete = () => {
+    if (!shift) return
+
+    // Se è un turno ricorrente, chiedi se eliminare solo questa occorrenza o tutta la serie
+    if (shift.recurrence && !showDeleteConfirm) {
+      setShowDeleteConfirm(true)
+      return
+    }
+
+    // Per i turni singoli, mostra una modale di conferma semplice
+    if (!shift.recurrence && !showSimpleDeleteDialog) {
+      setShowSimpleDeleteDialog(true)
+      return
+    }
+
+    // Se siamo già nella conferma (ricorrente o semplice), esegui la cancellazione
+    executeDelete()
   }
 
   const formatDate = (dateString: string) => {
@@ -509,6 +524,19 @@ export function ShiftDetailModal({
           setShowEditModal(false)
           onShiftUpdated()
         }}
+      />
+
+      {/* Conferma semplice per eliminazione singola non ricorrente */}
+      <ConfirmDialog
+        open={showSimpleDeleteDialog}
+        onOpenChange={setShowSimpleDeleteDialog}
+        title="Elimina turno"
+        description={shift ? `Sei sicuro di voler eliminare il turno "${shift.title}" del ${new Date(shift.date).toLocaleDateString('it-IT')}? Questa azione non può essere annullata.` : 'Sei sicuro?'}
+        onConfirm={() => {
+          setShowSimpleDeleteDialog(false)
+          executeDelete()
+        }}
+        loading={loading}
       />
     </>
   )

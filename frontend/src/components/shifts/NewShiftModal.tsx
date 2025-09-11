@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -66,6 +66,9 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
   const [error, setError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<OperatorConflict[]>([])
   const [showConflicts, setShowConflicts] = useState(false)
+  // UI: ricerca locale per liste
+  const [siteQuery, setSiteQuery] = useState('')
+  const [opQuery, setOpQuery] = useState('')
 
   // Reset form quando si apre il modal
   useEffect(() => {
@@ -206,353 +209,371 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
   const selectedSites = sites.filter(site => formData.siteIds.includes(site.id))
   const selectedOperators = operators.filter(op => formData.operatorIds.includes(op.id))
 
+  const filteredSites = useMemo(() =>
+    sites.filter(
+      s =>
+        s.name.toLowerCase().includes(siteQuery.toLowerCase()) ||
+        s.address?.toLowerCase().includes(siteQuery.toLowerCase()) ||
+        s.client?.name?.toLowerCase().includes(siteQuery.toLowerCase())
+    ),
+    [sites, siteQuery]
+  )
+
+  const filteredOperators = useMemo(() =>
+    operators.filter(
+      o =>
+        `${o.firstName} ${o.lastName}`.toLowerCase().includes(opQuery.toLowerCase()) ||
+        o.email?.toLowerCase().includes(opQuery.toLowerCase())
+    ),
+    [operators, opQuery]
+  )
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Nuovo Turno
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informazioni base */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Titolo *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Es. Pulizia uffici"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="date">Data *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Note */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Note</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="Note aggiuntive per il turno..."
-              rows={3}
-            />
-          </div>
-
-          {/* Ricorrenza */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hasRecurrence"
-                checked={formData.hasRecurrence}
-                onCheckedChange={(checked) => 
-                  setFormData(prev => ({ ...prev, hasRecurrence: !!checked }))
-                }
-              />
-              <Label htmlFor="hasRecurrence">Turno ricorrente</Label>
-            </div>
-
-            {formData.hasRecurrence && (
-              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Frequenza</Label>
-                    <Select
-                      value={formData.recurrence.frequency}
-                      onValueChange={(value: 'daily' | 'weekly') => 
-                        setFormData(prev => ({
-                          ...prev,
-                          recurrence: { ...prev.recurrence, frequency: value }
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Giornaliero</SelectItem>
-                        <SelectItem value="weekly">Settimanale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ogni</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="30"
-                        value={formData.recurrence.interval}
-                        onChange={(e) => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, interval: parseInt(e.target.value) || 1 }
-                          }))
-                        }
-                        className="w-20"
-                      />
-                      <span className="text-sm text-gray-600">
-                        {formData.recurrence.frequency === 'daily' ? 'giorni' : 'settimane'}
-                      </span>
-                    </div>
-                  </div>
+      <DialogContent className="max-w-4xl w-full p-0 overflow-hidden rounded-2xl">
+        <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <DialogHeader className="px-6 pt-5 pb-4">
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex p-2 rounded-xl bg-primary/10 text-primary">
+                  <Calendar className="w-5 h-5" />
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xl">Nuovo Turno</span>
+                  <span className="text-sm text-muted-foreground">Crea un nuovo turno assegnando siti e operatori</span>
                 </div>
-
-                <div className="space-y-3">
-                  <Label>Termina</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="never"
-                        name="endType"
-                        checked={formData.recurrence.endType === 'never'}
-                        onChange={() => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, endType: 'never' }
-                          }))
-                        }
-                      />
-                      <Label htmlFor="never">Mai</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="count"
-                        name="endType"
-                        checked={formData.recurrence.endType === 'count'}
-                        onChange={() => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, endType: 'count' }
-                          }))
-                        }
-                      />
-                      <Label htmlFor="count">Dopo</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="365"
-                        value={formData.recurrence.count || ''}
-                        onChange={(e) => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, count: parseInt(e.target.value) || undefined }
-                          }))
-                        }
-                        className="w-20"
-                        disabled={formData.recurrence.endType !== 'count'}
-                      />
-                      <span className="text-sm text-gray-600">occorrenze</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="date"
-                        name="endType"
-                        checked={formData.recurrence.endType === 'date'}
-                        onChange={() => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, endType: 'date' }
-                          }))
-                        }
-                      />
-                      <Label htmlFor="date">Il</Label>
-                      <Input
-                        type="date"
-                        value={formData.recurrence.endDate || ''}
-                        onChange={(e) => 
-                          setFormData(prev => ({
-                            ...prev,
-                            recurrence: { ...prev.recurrence, endDate: e.target.value }
-                          }))
-                        }
-                        disabled={formData.recurrence.endType !== 'date'}
-                        min={formData.date}
-                      />
-                    </div>
-                  </div>
-                </div>
+                {formData.hasRecurrence && (
+                  <Badge variant="secondary" className="ml-2">Ricorrente</Badge>
+                )}
               </div>
-            )}
-          </div>
+              <div className="text-sm text-muted-foreground">
+                {new Date(formData.date).toLocaleDateString('it-IT')}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
-          {/* Selezione Siti */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Siti * ({formData.siteIds.length} selezionati)
-            </Label>
-            
-            {selectedSites.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedSites.map(site => (
-                  <Badge key={site.id} variant="secondary" className="flex items-center gap-1">
-                    {site.name}
-                    <X 
-                      className="w-3 h-3 cursor-pointer" 
-                      onClick={() => handleSiteToggle(site.id)}
+        <form onSubmit={handleSubmit} className="max-h-[78vh] overflow-y-auto px-6 py-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <section className="rounded-xl border p-4 lg:p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold">Informazioni di base</h3>
+                  <p className="text-sm text-muted-foreground">Titolo, data e note del turno</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Titolo *</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Es. Pulizia uffici"
+                      required
                     />
-                  </Badge>
-                ))}
-              </div>
-            )}
-            
-            <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-2">
-              {sites.map(site => (
-                <div key={site.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`site-${site.id}`}
-                    checked={formData.siteIds.includes(site.id)}
-                    onCheckedChange={() => handleSiteToggle(site.id)}
-                  />
-                  <Label htmlFor={`site-${site.id}`} className="flex-1 cursor-pointer">
-                    <div>
-                      <div className="font-medium">{site.name}</div>
-                      <div className="text-sm text-gray-600">{site.address}</div>
-                      {site.client && (
-                        <div className="text-xs text-gray-500">{site.client.name}</div>
-                      )}
-                    </div>
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Selezione Operatori */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Operatori * ({formData.operatorIds.length} selezionati)
-            </Label>
-            
-            {selectedOperators.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedOperators.map(operator => (
-                  <Badge key={operator.id} variant="secondary" className="flex items-center gap-1">
-                    {operator.firstName} {operator.lastName}
-                    {operator.isManager && <span className="text-xs">(Manager)</span>}
-                    <X 
-                      className="w-3 h-3 cursor-pointer" 
-                      onClick={() => handleOperatorToggle(operator.id)}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                      required
                     />
-                  </Badge>
-                ))}
-              </div>
-            )}
-            
-            <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-2">
-              {operators.map(operator => (
-                <div key={operator.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`operator-${operator.id}`}
-                    checked={formData.operatorIds.includes(operator.id)}
-                    onCheckedChange={() => handleOperatorToggle(operator.id)}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="notes">Note</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Note aggiuntive per il turno..."
+                    rows={4}
                   />
-                  <Label htmlFor={`operator-${operator.id}`} className="flex-1 cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">
-                          {operator.firstName} {operator.lastName}
+                </div>
+              </section>
+
+              {/* Ricorrenza */}
+              <section className="rounded-xl border p-4 lg:p-5">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasRecurrence"
+                    checked={formData.hasRecurrence}
+                    onCheckedChange={(checked) =>
+                      setFormData(prev => ({ ...prev, hasRecurrence: !!checked }))
+                    }
+                  />
+                  <Label htmlFor="hasRecurrence">Turno ricorrente</Label>
+                </div>
+
+                {formData.hasRecurrence && (
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Frequenza</Label>
+                        <Select
+                          value={formData.recurrence.frequency}
+                          onValueChange={(value: 'daily' | 'weekly') =>
+                            setFormData(prev => ({
+                              ...prev,
+                              recurrence: { ...prev.recurrence, frequency: value }
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Giornaliero</SelectItem>
+                            <SelectItem value="weekly">Settimanale</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ogni</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            max="30"
+                            value={formData.recurrence.interval}
+                            onChange={(e) =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, interval: parseInt(e.target.value) || 1 }
+                              }))
+                            }
+                            className="w-20"
+                          />
+                          <span className="text-sm text-gray-600">
+                            {formData.recurrence.frequency === 'daily' ? 'giorni' : 'settimane'}
+                          </span>
                         </div>
-                        <div className="text-sm text-gray-600">{operator.email}</div>
                       </div>
-                      {operator.isManager && (
-                        <Badge variant="outline" className="text-xs">Manager</Badge>
-                      )}
                     </div>
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Warning conflitti */}
-          {conflicts.length > 0 && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-800">
-                <div className="font-medium mb-2">Attenzione: Conflitti rilevati</div>
-                <div className="space-y-2 text-sm">
-                  {conflicts.map(conflict => (
-                    <div key={conflict.operatorId} className="border-l-2 border-orange-300 pl-3">
-                      <div className="font-medium text-orange-900">
-                        {conflict.operatorName}
+                    <div className="space-y-3">
+                      <Label>Termina</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="never"
+                            name="endType"
+                            checked={formData.recurrence.endType === 'never'}
+                            onChange={() =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, endType: 'never' }
+                              }))
+                            }
+                          />
+                          <Label htmlFor="never">Mai</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="count"
+                            name="endType"
+                            checked={formData.recurrence.endType === 'count'}
+                            onChange={() =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, endType: 'count' }
+                              }))
+                            }
+                          />
+                          <Label htmlFor="count">Dopo</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="365"
+                            value={formData.recurrence.count || ''}
+                            onChange={(e) =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, count: parseInt(e.target.value) || undefined }
+                              }))
+                            }
+                            className="w-20"
+                            disabled={formData.recurrence.endType !== 'count'}
+                          />
+                          <span className="text-sm text-gray-600">occorrenze</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="date"
+                            name="endType"
+                            checked={formData.recurrence.endType === 'date'}
+                            onChange={() =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, endType: 'date' }
+                              }))
+                            }
+                          />
+                          <Label htmlFor="date">Il</Label>
+                          <Input
+                            type="date"
+                            value={formData.recurrence.endDate || ''}
+                            onChange={(e) =>
+                              setFormData(prev => ({
+                                ...prev,
+                                recurrence: { ...prev.recurrence, endDate: e.target.value }
+                              }))
+                            }
+                            disabled={formData.recurrence.endType !== 'date'}
+                            min={formData.date}
+                          />
+                        </div>
                       </div>
-                      <div className="text-orange-700 mb-1">è già assegnato a:</div>
-                      <div className="space-y-1">
-                        {conflict.conflictingShifts.map(shift => (
-                          <div key={shift.id} className="flex items-center justify-between bg-orange-100 rounded px-2 py-1">
-                            <div className="flex-1">
-                              <div className="font-medium text-orange-900">{shift.title}</div>
-                              <div className="text-xs text-orange-600">
-                                {new Date(shift.date).toLocaleDateString('it-IT', {
-                                  weekday: 'short',
-                                  day: 'numeric',
-                                  month: 'short'
-                                })}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Warning conflitti */}
+              {conflicts.length > 0 && (
+                <Alert className="border-orange-200 bg-orange-50">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800">
+                    <div className="font-medium mb-2">Attenzione: Conflitti rilevati</div>
+                    <div className="space-y-2 text-sm">
+                      {conflicts.map(conflict => (
+                        <div key={conflict.operatorId} className="border-l-2 border-orange-300 pl-3">
+                          <div className="font-medium text-orange-900">{conflict.operatorName}</div>
+                          <div className="text-orange-700 mb-1">è già assegnato a:</div>
+                          <div className="space-y-1">
+                            {conflict.conflictingShifts.map(shift => (
+                              <div key={shift.id} className="flex items-center justify-between bg-orange-100 rounded px-2 py-1">
+                                <div className="flex-1">
+                                  <div className="font-medium text-orange-900">{shift.title}</div>
+                                  <div className="text-xs text-orange-600">
+                                    {new Date(shift.date).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-orange-700 hover:text-orange-900 hover:bg-orange-200 h-6 px-2 text-xs"
+                                  onClick={() => console.log('Navigate to shift:', shift.id)}
+                                >
+                                  Visualizza
+                                </Button>
                               </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="text-orange-700 hover:text-orange-900 hover:bg-orange-200 h-6 px-2 text-xs"
-                              onClick={() => {
-                                // TODO: Implementare navigazione al turno confliggente
-                                console.log('Navigate to shift:', shift.id)
-                              }}
-                            >
-                              Visualizza
-                            </Button>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-sm">Puoi comunque procedere con la creazione del turno.</div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Errori */}
+              {error && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {/* Colonna destra: Siti e Operatori con ricerca */}
+            <div className="space-y-6">
+              <section className="rounded-xl border p-4 lg:p-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2"><MapPin className="w-4 h-4" /> Siti * <span className="text-muted-foreground font-normal">({formData.siteIds.length} selezionati)</span></h3>
+                    <p className="text-sm text-muted-foreground">Seleziona uno o più siti</p>
+                  </div>
+                  <div className="w-44">
+                    <Input placeholder="Cerca sito…" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)} />
+                  </div>
+                </div>
+
+                {selectedSites.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {selectedSites.map(site => (
+                      <Badge key={site.id} variant="secondary" className="flex items-center gap-1">
+                        {site.name}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => handleSiteToggle(site.id)} />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="max-h-56 overflow-y-auto rounded-lg border p-2 space-y-2 bg-background">
+                  {filteredSites.map(site => (
+                    <div key={site.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-muted/50">
+                      <Checkbox id={`site-${site.id}`} checked={formData.siteIds.includes(site.id)} onCheckedChange={() => handleSiteToggle(site.id)} />
+                      <Label htmlFor={`site-${site.id}`} className="flex-1 cursor-pointer">
+                        <div className="font-medium">{site.name}</div>
+                        {site.address && <div className="text-sm text-muted-foreground">{site.address}</div>}
+                        {site.client && <div className="text-xs text-muted-foreground">{site.client.name}</div>}
+                      </Label>
                     </div>
                   ))}
+                  {filteredSites.length === 0 && <div className="text-sm text-muted-foreground px-1 py-4 text-center">Nessun sito trovato.</div>}
                 </div>
-                <div className="mt-2 text-sm">
-                  Puoi comunque procedere con la creazione del turno.
+              </section>
+
+              <section className="rounded-xl border p-4 lg:p-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Operatori * <span className="text-muted-foreground font-normal">({formData.operatorIds.length} selezionati)</span></h3>
+                    <p className="text-sm text-muted-foreground">Seleziona gli operatori assegnati</p>
+                  </div>
+                  <div className="w-44">
+                    <Input placeholder="Cerca operatore…" value={opQuery} onChange={(e) => setOpQuery(e.target.value)} />
+                  </div>
                 </div>
-              </AlertDescription>
-            </Alert>
-          )}
 
-          {/* Errori */}
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
+                {selectedOperators.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {selectedOperators.map(op => (
+                      <Badge key={op.id} variant="secondary" className="flex items-center gap-1">
+                        {op.firstName} {op.lastName}
+                        {op.isManager && <span className="text-xs">(Manager)</span>}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => handleOperatorToggle(op.id)} />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Annulla
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creazione...' : 'Crea Turno'}
-            </Button>
-          </DialogFooter>
+                <div className="max-h-56 overflow-y-auto rounded-lg border p-2 space-y-2 bg-background">
+                  {filteredOperators.map(op => (
+                    <div key={op.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-muted/50">
+                      <Checkbox id={`operator-${op.id}`} checked={formData.operatorIds.includes(op.id)} onCheckedChange={() => handleOperatorToggle(op.id)} />
+                      <Label htmlFor={`operator-${op.id}`} className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{op.firstName} {op.lastName}</div>
+                            {op.email && <div className="text-sm text-muted-foreground">{op.email}</div>}
+                          </div>
+                          {op.isManager && <Badge variant="outline" className="text-xs">Manager</Badge>}
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                  {filteredOperators.length === 0 && <div className="text-sm text-muted-foreground px-1 py-4 text-center">Nessun operatore trovato.</div>}
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 pt-5 mt-6 bg-gradient-to-t from-background via-background/80 to-transparent">
+            <DialogFooter className="gap-2 border-t pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+              <Button type="submit" disabled={loading}>{loading ? 'Creazione...' : 'Crea Turno'}</Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

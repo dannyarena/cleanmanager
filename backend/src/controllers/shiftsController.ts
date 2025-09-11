@@ -626,66 +626,78 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         return res.status(400).json({ error: "Impossibile dividere un turno non ricorrente" });
       }
       
-      // Determina la data pivot (data dell'occorrenza o data del master se non specificata)
-      const pivotDate = parsedId.occurrenceDate || shift.date;
+      // Validazione: richiedi occurrenceDate per this_and_future
+      const pivot = parsedId.occurrenceDate ?? (req.body.occurrenceDate ? new Date(req.body.occurrenceDate) : null);
+      if (!pivot) {
+        return res.status(400).json({ error: 'occurrenceDate richiesto per this_and_future' });
+      }
+      pivot.setUTCHours(0, 0, 0, 0);
       
-      // Prepara i dati per il nuovo turno
-      const newShiftData: any = {
-        title: title?.trim() || shift.title,
-        date: date ? new Date(date) : pivotDate,
-        notes: notes?.trim() !== undefined ? notes?.trim() || null : shift.notes,
-        tenantId: shift.tenantId
-      };
+      // Verifica che pivot sia un'occorrenza valida della ricorrenza
+      const isValid = await isValidRecurrenceOccurrence(shift.id, pivot, tenantId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'occurrenceDate non valida per questa ricorrenza' });
+      }
       
-      // Prepara i dati per la nuova ricorrenza
-      const newRecurrenceData: any = {
-        frequency: recurrence?.frequency?.toUpperCase() || shift.shiftRecurrence.frequency,
-        interval: recurrence?.interval || shift.shiftRecurrence.interval,
-        startDate: recurrence?.startDate ? new Date(recurrence.startDate) : newShiftData.date,
-        endDate: recurrence?.endDate ? new Date(recurrence.endDate) : shift.shiftRecurrence.endDate,
-        count: recurrence?.count !== undefined ? recurrence.count : shift.shiftRecurrence.count
-      };
+      // Calcola il "fine" della serie originale = giorno prima del pivot
+      const endForOriginal = new Date(pivot);
+      endForOriginal.setUTCDate(endForOriginal.getUTCDate() - 1);
+      endForOriginal.setUTCHours(0, 0, 0, 0);
       
       const newShiftResult = await prisma.$transaction(async (tx) => {
-        // 1. Crea nuovo master con startDate=pivotDate + nuove proprietà
+        // 1) Tronca la serie originale (NON toccare startDate!)
+        // Se endForOriginal < startDate, la serie originale si azzera: in quel caso eliminala
+        if (endForOriginal < shift.shiftRecurrence!.startDate) {
+          await tx.shift.delete({ where: { id: shift.id } });
+        } else {
+          await tx.shiftRecurrence.update({
+            where: { id: shift.shiftRecurrence!.id },
+            data: { endDate: endForOriginal }
+          });
+          // Mantieni eccezioni < pivot
+          await tx.shiftException.deleteMany({
+            where: { shiftId: shift.id, date: { gte: pivot } }
+          });
+        }
+        
+        // 2) Crea la NUOVA serie da pivot in poi con i NUOVI dati
         const newShift = await tx.shift.create({
           data: {
-            ...newShiftData,
+            tenantId: shift.tenantId,
+            title: title?.trim() ?? shift.title,
+            notes: notes?.trim() !== undefined ? notes?.trim() || null : shift.notes,
+            date: pivot, // data "master" allineata al pivot
             shiftRecurrence: {
-              create: newRecurrenceData
+              create: {
+                frequency: recurrence?.frequency?.toUpperCase() || shift.shiftRecurrence!.frequency,
+                interval: recurrence?.interval || shift.shiftRecurrence!.interval,
+                startDate: pivot,
+                endDate: recurrence?.endDate ? new Date(recurrence.endDate) : shift.shiftRecurrence!.endDate,
+                count: recurrence?.count !== undefined ? recurrence.count : shift.shiftRecurrence!.count
+              }
             }
           },
           include: { shiftRecurrence: true }
         });
         
-        // 2. Assegna siti (nuovi se specificati, altrimenti copia dal master originale)
+        // Assegna siti/operatori aggiornati (se forniti), altrimenti ereditati dal master
         const sitesToAssign = siteIds !== undefined ? siteIds : shift.shiftSites.map(ss => ss.siteId);
         if (sitesToAssign.length > 0) {
           await tx.shiftSite.createMany({
-            data: sitesToAssign.map(siteId => ({
-              shiftId: newShift.id,
-              siteId: siteId
-            }))
+            data: sitesToAssign.map(siteId => ({ shiftId: newShift.id, siteId }))
           });
         }
         
-        // 3. Assegna operatori (nuovi se specificati, altrimenti copia dal master originale)
         const operatorsToAssign = operatorIds !== undefined ? operatorIds : shift.shiftOperators.map(so => so.userId);
         if (operatorsToAssign.length > 0) {
           await tx.shiftOperator.createMany({
-            data: operatorsToAssign.map(operatorId => ({
-              shiftId: newShift.id,
-              userId: operatorId
-            }))
+            data: operatorsToAssign.map(userId => ({ shiftId: newShift.id, userId }))
           });
         }
         
-        // 4. Migra ShiftException con date>=pivotDate al nuovo master
+        // 3) (Opzionale) Se vuoi preservare eccezioni future già esistenti, ricreale sulla nuova serie
         const futureExceptions = await tx.shiftException.findMany({
-          where: {
-            shiftId: shift.id,
-            date: { gte: pivotDate }
-          }
+          where: { shiftId: shift.id, date: { gte: pivot } }
         });
         
         if (futureExceptions.length > 0) {
@@ -699,23 +711,7 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
               newDate: ex.newDate
             }))
           });
-          
-          await tx.shiftException.deleteMany({
-            where: {
-              shiftId: shift.id,
-              date: { gte: pivotDate }
-            }
-          });
         }
-        
-        // 5. Accorcia endDate del vecchio master a pivotDate - 1 giorno
-        const endDateForOriginal = new Date(pivotDate);
-        endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
-        
-        await tx.shiftRecurrence.update({
-          where: { id: shift.shiftRecurrence.id },
-          data: { endDate: endDateForOriginal }
-        });
         
         // Recupera il nuovo turno creato
         const updatedShift = await getShiftByIdHelper(newShift.id, tenantId, tx);
@@ -723,7 +719,7 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
       });
       
       return res.json({
-        result: 'series_split',
+        result: 'series_split_and_updated',
         shift: newShiftResult
       });
     } else if (shift.shiftRecurrence && updateType === 'single') {

@@ -67,33 +67,8 @@ export class RecurrenceService {
       exceptionMap.set(dateKey, exception);
     });
 
-    // Se il turno master è nell'intervallo, includilo (considerando eccezioni)
-    if (normalizedMasterDate >= normalizedRangeStart && normalizedMasterDate <= normalizedRangeEnd) {
-      const masterDateKey = normalizedMasterDate.toISOString();
-      const exception = exceptionMap.get(masterDateKey);
-      
-      if (exception && exception.exceptionType === 'CANCELLED') {
-        // Turno master cancellato, non includerlo
-      } else if (exception && exception.exceptionType === 'MODIFIED') {
-        // Turno master modificato
-        const effectiveDate = exception.newDate ? this.normalizeDate(exception.newDate) : normalizedMasterDate;
-        occurrences.push({
-          date: effectiveDate,
-          isOriginal: true,
-          isException: true,
-          exceptionType: exception.exceptionType,
-          modifiedTitle: exception.newTitle,
-          modifiedNotes: exception.newNotes,
-          modifiedDate: exception.newDate ? effectiveDate : undefined
-        });
-      } else {
-        // Turno master normale
-        occurrences.push({
-          date: normalizedMasterDate,
-          isOriginal: true
-        });
-      }
-    }
+    // Includi anche la prima occorrenza (startDate). Il master non viene mai
+    // restituito separatamente negli endpoint ricorrenti, quindi è corretto.
     
     // Genera occorrenze ricorrenti
     let currentDate = new Date(normalizedStartDate);
@@ -105,10 +80,9 @@ export class RecurrenceService {
       if (count && occurrenceCount >= count) break;
       if (currentDate > normalizedRangeEnd) break;
       
-      // Se la data corrente è nell'intervallo e non è il turno master
+      // Se la data corrente è nell'intervallo
       if (currentDate >= normalizedRangeStart && 
-          currentDate <= normalizedRangeEnd && 
-          currentDate.getTime() !== normalizedMasterDate.getTime()) {
+          currentDate <= normalizedRangeEnd) {
         
         const currentDateKey = currentDate.toISOString();
         const exception = exceptionMap.get(currentDateKey);
@@ -131,7 +105,7 @@ export class RecurrenceService {
           // Occorrenza normale
           occurrences.push({
             date: new Date(currentDate),
-            isOriginal: false
+            isOriginal: currentDate.getTime() === normalizedStartDate.getTime()
           });
         }
       }
