@@ -25,7 +25,7 @@ interface SettingsContextType {
 
 const defaultSettings: TenantSettings = {
   companyName: 'CleanManager',
-  primaryColor: '#2563eb',
+  primaryColor: '#2563EB',
   theme: 'light',
   workingDays: [1, 2, 3, 4, 5], // Lun-Ven
   recurrenceDefaultFrequency: 'weekly',

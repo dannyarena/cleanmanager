@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react'
 import { useSettings } from './SettingsContext'
+import { hexToHsl } from '../lib/utils'
 
 interface ThemeContextType {
   theme: 'light' | 'dark'
@@ -25,35 +26,25 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { settings, updateSettings } = useSettings()
 
-  // Funzione per applicare il tema e il colore
-  const applyThemeAndColor = (newTheme: 'light' | 'dark', newColor: string) => {
-    // Applica la classe del tema
-    const root = document.documentElement
-    root.classList.remove('light', 'dark')
-    root.classList.add(newTheme)
-    
-    // Converte hex in RGB per Tailwind
-    const hexToRgb = (hex: string) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : null
-    }
-    
-    const rgb = hexToRgb(newColor)
-    if (rgb) {
-      root.style.setProperty('--cm-primary', `${rgb.r} ${rgb.g} ${rgb.b}`)
-    }
-  }
-
-  // Applica il tema quando le impostazioni cambiano
+  // Applica il tema e il colore primario
   useEffect(() => {
-    if (settings) {
-      applyThemeAndColor(settings.theme, settings.primaryColor)
+    if (!settings) return
+    
+    const root = document.documentElement
+    
+    // Applica la classe dark su <html> quando theme === 'dark'
+    if (settings.theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
     }
+    
+    // Converte primaryColor da hex a HSL e applica --primary
+    const hsl = hexToHsl(settings.primaryColor)
+    root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`)
   }, [settings?.theme, settings?.primaryColor])
+
+
 
   const setTheme = async (newTheme: 'light' | 'dark') => {
     await updateSettings({ theme: newTheme })
@@ -66,7 +57,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   return (
     <ThemeContext.Provider value={{
       theme: settings?.theme || 'light',
-      primaryColor: settings?.primaryColor || '#2563eb',
+      primaryColor: settings?.primaryColor || '#2563EB',
       setTheme,
       setPrimaryColor
     }}>

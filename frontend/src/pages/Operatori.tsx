@@ -105,7 +105,7 @@ export function Operatori() {
             ? 'bg-yellow-100 text-yellow-800'
             : operator.isManager
             ? 'bg-red-100 text-red-800'
-            : 'bg-blue-100 text-blue-800'
+            : 'bg-primary/10 text-primary'
         }`}>
           {value === 'admin' ? 'Amministratore' : 
            operator.isManager ? 'Manager' : 'Operatore'}
@@ -166,8 +166,8 @@ export function Operatori() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <UserCheck className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <UserCheck className="w-6 h-6 text-primary" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Totale Operatori</p>

@@ -21,6 +21,8 @@ const DAYS_OF_WEEK = [
   { value: 7, label: 'Dom' }
 ]
 
+const PRESET_COLORS = ['#2563EB','#7C3AED','#059669','#EA580C','#DC2626','#0EA5E9','#A855F7','#10B981']
+
 export function Settings() {
   const { settings, loading, saving, updateSettings } = useSettings()
   const { setTheme, setPrimaryColor } = useTheme()
@@ -59,7 +61,7 @@ export function Settings() {
           </p>
         </div>
         {saving && (
-          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-2 text-sm text-primary dark:text-primary">
             <Loader2 className="h-4 w-4 animate-spin" />
             Salvataggio in corso...
           </div>
@@ -91,31 +93,21 @@ export function Settings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primaryColor">Colore Primario</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  id="primaryColor"
-                  type="color"
-                  value={settings.primaryColor}
-                  onChange={(e) => {
-                    const newColor = e.target.value
-                    updateSettings({ primaryColor: newColor })
-                    setPrimaryColor(newColor)
-                  }}
-                  className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
-                  disabled={saving}
-                />
-                <Input
-                  value={settings.primaryColor}
-                  onChange={(e) => {
-                    const newColor = e.target.value
-                    updateSettings({ primaryColor: newColor })
-                    setPrimaryColor(newColor)
-                  }}
-                  placeholder="#2563eb"
-                  className="flex-1"
-                  disabled={saving}
-                />
+              <Label>Colore Primario</Label>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map(c => (
+                  <button
+                    key={c}
+                    aria-label={`colore ${c}`}
+                    onClick={() => updateSettings({ primaryColor: c })}
+                    className={`h-8 w-8 rounded-full border transition ${
+                      settings.primaryColor === c ? 'ring-2 ring-primary scale-105' : 'hover:opacity-80'
+                    }`}
+                    style={{ backgroundColor: c }}
+                    type="button"
+                    disabled={saving}
+                  />
+                ))}
               </div>
             </div>
 

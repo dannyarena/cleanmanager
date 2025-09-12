@@ -188,7 +188,7 @@ export function Calendario() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -244,7 +244,7 @@ export function Calendario() {
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-medium ${
                     day.date.toDateString() === new Date().toDateString()
-                      ? 'text-blue-600 font-bold'
+                      ? 'text-primary font-bold'
                       : day.isCurrentMonth
                       ? 'text-gray-900'
                       : 'text-gray-400'
@@ -319,14 +319,14 @@ interface ShiftCardProps {
 function ShiftCard({ shift, onClick }: ShiftCardProps) {
   return (
     <div
-      className="bg-blue-50 border border-blue-200 rounded-lg p-2 cursor-pointer hover:bg-blue-100 transition-colors"
+      className="bg-primary/10 border border-primary/20 rounded-lg p-2 cursor-pointer hover:bg-primary/20 transition-colors"
       onClick={onClick}
     >
-      <div className="text-xs font-medium text-blue-900 mb-1 truncate">
+      <div className="text-xs font-medium text-primary mb-1 truncate">
         {shift.title}
       </div>
       
-      <div className="flex items-center gap-1 text-xs text-blue-700">
+      <div className="flex items-center gap-1 text-xs text-primary/90">
         <MapPin className="w-3 h-3" />
         <span>{shift.sites.length}</span>
         
@@ -335,7 +335,7 @@ function ShiftCard({ shift, onClick }: ShiftCardProps) {
       </div>
       
       {shift.operators.length > 0 && (
-        <div className="mt-1 text-xs text-blue-600 truncate">
+        <div className="mt-1 text-xs text-primary truncate">
           {shift.operators.slice(0, 2).map(op => `${op.firstName} ${op.lastName}`).join(', ')}
           {shift.operators.length > 2 && ` +${shift.operators.length - 2}`}
         </div>

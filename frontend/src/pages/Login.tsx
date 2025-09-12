@@ -146,10 +146,10 @@ export function Login() {
         </Card>
 
         {/* Demo credentials */}
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-primary/10 border-primary/20">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-medium text-blue-900 mb-2">Credenziali demo:</h3>
-            <div className="text-sm text-blue-800 space-y-1">
+            <h3 className="text-sm font-medium text-primary mb-2">Credenziali demo:</h3>
+            <div className="text-sm text-primary/90 space-y-1">
               <p><strong>Admin:</strong> admin@cleanmanager.demo / password123</p>
               <p><strong>Manager:</strong> manager@cleanmanager.demo / password123</p>
               <p><strong>Operatore:</strong> operatore@cleanmanager.demo / password123</p>

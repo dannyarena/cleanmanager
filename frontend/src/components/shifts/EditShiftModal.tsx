@@ -351,11 +351,11 @@ export function EditShiftModal({
 
               {/* Card conferma ricorrenza */}
               {showUpdateConfirm && shift.recurrence && (
-                <section className="rounded-xl border p-4 lg:p-5 bg-blue-50/40 dark:bg-blue-950/20">
+                <section className="rounded-xl border p-4 lg:p-5 bg-primary/10 dark:bg-primary/20">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 text-primary mt-0.5" />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-200">
+                      <h4 className="font-semibold text-primary dark:text-primary">
                         Questo è un turno ricorrente. Cosa vuoi aggiornare?
                       </h4>
 
@@ -365,7 +365,7 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'single' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'single'
-                              ? 'border-blue-500 bg-white dark:bg-transparent'
+                              ? 'border-primary bg-white dark:bg-transparent'
                               : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >
@@ -376,7 +376,7 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'this_and_future' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'this_and_future'
-                              ? 'border-blue-500 bg-white dark:bg-transparent'
+                              ? 'border-primary bg-white dark:bg-transparent'
                               : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >
@@ -387,7 +387,7 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'series' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'series'
-                              ? 'border-blue-500 bg-white dark:bg-transparent'
+                              ? 'border-primary bg-white dark:bg-transparent'
                               : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >

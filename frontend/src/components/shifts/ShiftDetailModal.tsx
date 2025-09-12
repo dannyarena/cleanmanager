@@ -344,8 +344,8 @@ export function ShiftDetailModal({
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-blue-600" />
+                              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-primary" />
                               </div>
                               <div>
                                 <h4 className="font-medium text-gray-900">
@@ -373,7 +373,7 @@ export function ShiftDetailModal({
               <TabsContent value="checklists" className="space-y-4">
                 {loadingChecklists ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
                 ) : (
                   <div className="space-y-6">

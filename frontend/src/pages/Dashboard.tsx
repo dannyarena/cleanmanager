@@ -113,8 +113,8 @@ export function Dashboard() {
       title: 'Turni Oggi',
       value: stats.todayShifts,
       icon: Calendar,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
       href: '/calendario',
       trend: stats.trends.shiftsChange,
       trendText: 'rispetto a ieri'
