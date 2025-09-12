@@ -283,6 +283,22 @@ class ApiService {
       body: JSON.stringify({ operatorIds }),
     })
   }
+
+  // Settings
+  async getSettings(): Promise<any> {
+    const response = await authService.authenticatedFetch('/settings')
+    const data: ApiResponse<any> = await response.json()
+    return data.data
+  }
+
+  async updateSettings(settings: any): Promise<any> {
+    const response = await authService.authenticatedFetch('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    })
+    const data: ApiResponse<any> = await response.json()
+    return data.data
+  }
 }
 
 export const apiService = new ApiService()

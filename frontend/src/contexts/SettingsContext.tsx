@@ -57,10 +57,10 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       setLoading(true)
       setError(null)
       
-      const response = await apiService.get('/settings')
+      const settingsData = await apiService.getSettings()
       
-      if (response.success && response.data) {
-        setSettings(response.data)
+      if (settingsData) {
+        setSettings(settingsData)
       } else {
         // Se non ci sono impostazioni salvate, usa i default
         setSettings(defaultSettings)
@@ -86,18 +86,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       setSettings(updatedSettings)
       
       // Salva sul server
-      const response = await apiService.put('/settings', newSettings)
+      const updatedData = await apiService.updateSettings(newSettings)
       
-      if (response.success) {
-        toast.success('Impostazioni salvate con successo')
-        // Aggiorna con i dati dal server per sicurezza
-        if (response.data) {
-          setSettings(response.data)
-        }
-      } else {
-        // Rollback in caso di errore
-        setSettings(settings)
-        toast.error(response.error || 'Errore nel salvataggio delle impostazioni')
+      toast.success('Impostazioni salvate con successo')
+      // Aggiorna con i dati dal server per sicurezza
+      if (updatedData) {
+        setSettings(updatedData)
       }
     } catch (err: any) {
       console.error('Errore nel salvataggio delle impostazioni:', err)

@@ -170,7 +170,7 @@ export function Settings() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  A effetto su ricorrenze giornaliere: i giorni esclusi non vengono renderizzati.
+                  Effetto su ricorrenze giornaliere: i giorni esclusi non vengono renderizzati.
                 </AlertDescription>
               </Alert>
             </div>
