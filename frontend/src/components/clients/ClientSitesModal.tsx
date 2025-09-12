@@ -42,14 +42,14 @@ export const ClientSitesModal: React.FC<Props> = ({ open, onClose, clientId }) =
         </DialogHeader>
 
         <div className="space-y-3 max-h-[60vh] overflow-auto">
-          {loading && <div className="text-sm text-gray-500">Caricamento...</div>}
+          {loading && <div className="text-sm text-muted">Caricamento...</div>}
           {!loading && sites.length === 0 && (
-            <div className="text-sm text-gray-500">Nessun sito assegnato a questo cliente.</div>
+            <div className="text-sm text-muted">Nessun sito assegnato a questo cliente.</div>
           )}
           {!loading && sites.map(s => (
-            <div key={s.id} className="p-3 border rounded-md bg-white">
-              <div className="font-medium text-gray-900">{s.name}</div>
-              <div className="text-sm text-gray-500">{s.address}</div>
+            <div key={s.id} className="p-3 border rounded-md bg-card">
+              <div className="font-medium text-card-foreground">{s.name}</div>
+              <div className="text-sm text-muted">{s.address}</div>
             </div>
           ))}
         </div>

@@ -26,7 +26,7 @@ const badgeVariants = cva(
         manager:
           "border-transparent bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
         operator:
-          "border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200",
+          "border-transparent bg-accent/3 text-muted-foreground hover:bg-accent/4",
       },
     },
     defaultVariants: {
@@ -40,8 +40,13 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
+  // Only treat solid-colored variants as colored (they need white text on top)
+  // Light tints (bg-*/10, 100, etc.) should NOT force white text.
+  const solidColoredVariants = new Set(['default', 'destructive'])
+  const isColored = solidColoredVariants.has(variant || 'default')
+
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div data-colored={isColored ? 'true' : undefined} className={cn(badgeVariants({ variant }), className)} {...props} />
   )
 }
 

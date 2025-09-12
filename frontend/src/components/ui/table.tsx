@@ -20,12 +20,12 @@ export function Table<T extends Record<string, any>>({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6">
           <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-4 bg-muted rounded w-1/4"></div>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-4 bg-gray-200 rounded"></div>
+              <div key={i} className="h-4 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -35,25 +35,25 @@ export function Table<T extends Record<string, any>>({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-12 text-center">
-          <div className="text-gray-400 mb-4">
+          <div className="text-muted mb-4">
             <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun dato trovato</h3>
-          <p className="text-gray-500">Non ci sono elementi da visualizzare al momento.</p>
+          <h3 className="text-lg font-medium text-card-foreground mb-2">Nessun dato trovato</h3>
+          <p className="text-muted">Non ci sono elementi da visualizzare al momento.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+          <thead className="bg-popover">
             <tr>
               {columns.map((column) => {
                 const key = typeof column.key === 'string' ? column.key : String(column.key)
@@ -64,8 +64,9 @@ export function Table<T extends Record<string, any>>({
                   <th
                     key={key}
                     className={cn(
-                      'px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider',
-                      isSortable && 'cursor-pointer hover:bg-gray-100 select-none'
+                      'px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider',
+                      'text-muted-foreground',
+                      isSortable && 'cursor-pointer hover:bg-accent/5 select-none'
                     )}
                     onClick={() => isSortable && handleSort(key)}
                   >
@@ -78,7 +79,7 @@ export function Table<T extends Record<string, any>>({
                               'w-3 h-3 -mb-1',
                               isActive && sortDirection === 'asc' 
                                 ? 'text-primary' 
-                                : 'text-gray-400'
+                                : 'text-muted'
                             )} 
                           />
                           <ChevronDown 
@@ -86,7 +87,7 @@ export function Table<T extends Record<string, any>>({
                               'w-3 h-3',
                               isActive && sortDirection === 'desc' 
                                 ? 'text-primary' 
-                                : 'text-gray-400'
+                                : 'text-muted'
                             )} 
                           />
                         </div>
@@ -97,11 +98,11 @@ export function Table<T extends Record<string, any>>({
               })}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
             {data.map((item, index) => (
               <tr key={item.id || index} className={cn(
-                'transition-all duration-150 hover:bg-primary-50/50',
-                index % 2 === 1 && 'bg-gray-50/30'
+                'transition-all duration-150 hover:bg-primary/10',
+                index % 2 === 1 && 'bg-accent/2'
               )}>
                 {columns.map((column) => {
                   const key = typeof column.key === 'string' ? column.key : String(column.key)
@@ -110,7 +111,7 @@ export function Table<T extends Record<string, any>>({
                     : item[key]
                   
                   return (
-                    <td key={key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td key={key} className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
                       {column.render ? column.render(value, item) : value || '-'}
                     </td>
                   )

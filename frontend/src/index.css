@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,22 +6,34 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+  --background: 0 0% 100%;
+  /* Primary text/icon/number color in light mode: softened black (anthracite) */
+  --foreground: 220 6% 10%; /* soft black / anthracite */
+  --card: 0 0% 100%;
+  /* Make card/popover/primary/etc foregrounds follow the global foreground for consistency */
+  --card-foreground: var(--foreground);
+  --popover: 0 0% 100%;
+  --popover-foreground: var(--foreground);
+  --primary: 221.2 83.2% 53.3%;
+  /* Primary-foreground kept consistent with global text */
+  --primary-foreground: var(--foreground);
+  --secondary: 210 40% 96%;
+  --secondary-foreground: var(--foreground);
+  /* Color to use for text/icons placed on colored backgrounds (buttons, badges) */
+  --on-colored: 0 0% 100%; /* white */
+    
+  /* Skeleton color used for animate-pulse placeholders (light mode and dark mode values set below) */
+  --skeleton: 0 0% 82%;
+  /* Skeleton / muted background (light gray in light mode) - tuned for better visibility */
+  --muted: 0 0% 90%;
+  /* Muted text (labels/help text) in light mode: softer than foreground */
+  --muted-foreground: 220 6% 36%;
+      /* Placeholder-specific foreground (less contrast than normal text) */
+      --placeholder-foreground: 210 12% 40%;
     --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+  --accent-foreground: var(--foreground);
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: var(--foreground);
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
@@ -30,21 +42,31 @@
 
   .dark {
     --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Primary text/icon/number color in dark mode: pure white */
+    --foreground: 0 0% 100%;
     --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card-foreground: 0 0% 100%;
     --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover-foreground: 0 0% 100%;
     --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
+    /* Primary-foreground aligned with global text in dark mode (white) */
+    --primary-foreground: 0 0% 100%;
     --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary-foreground: 0 0% 100%;
+  --on-colored: 0 0% 100%; /* keep white on colored in dark too */
+    
+  /* Skeleton color in dark mode (lighter than dark background) */
+  --skeleton: 0 0% 25%;
+  /* Skeleton / muted background in dark mode: light-gray (not pure white) */
+  --muted: 0 0% 75%;
+  /* Muted text in dark mode: white */
+  --muted-foreground: 0 0% 100%;
+  /* Placeholder-specific foreground in dark mode (less contrast than normal text) */
+  --placeholder-foreground: 210 10% 65%;
     --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
@@ -57,6 +79,131 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Global overrides to enforce that text/icons/numbers follow the theme's foreground
+   while keeping bg-muted for skeletons. Using !important to override Tailwind
+   compiled utilities like .text-white when needed. */
+
+/* Base body text color follows the active foreground; do not force on every element so
+   component-specific classes (e.g. text-card-foreground) can still control color. */
+body {
+  color: hsl(var(--foreground));
+}
+
+/* Elements explicitly marked as colored (e.g. buttons with colored background)
+   should have their inner text/icons use --on-colored so they remain white on colored backgrounds */
+/* Apply on-colored only when explicitly marked and when the element is not disabled/hidden */
+[data-colored="true"]:not([disabled]):not([hidden]):not([aria-hidden="true"]),
+[data-colored="true"]:not([disabled]):not([hidden]):not([aria-hidden="true"]) * {
+  color: hsl(var(--on-colored)) !important;
+}
+
+/* Also apply on-colored for exact background class tokens (solid background classes only):
+   use token selector [class~="bg-primary"] to avoid matching tints like bg-primary/10 */
+[class~="bg-primary"],
+[class~="bg-destructive"],
+[class~="bg-secondary"],
+[class~="bg-accent"],
+[class~="bg-muted"],
+[class~="bg-gray-600"],
+[class~="bg-gray-700"],
+[class~="bg-gray-800"],
+[class~="bg-gray-900"] {
+  color: hsl(var(--on-colored)) !important;
+}
+
+[class~="bg-primary"] *,
+[class~="bg-destructive"] *,
+[class~="bg-secondary"] *,
+[class~="bg-accent"] *,
+[class~="bg-muted"] *,
+[class~="bg-gray-600"] *,
+[class~="bg-gray-700"] *,
+[class~="bg-gray-800"] *,
+[class~="bg-gray-900"] * {
+  color: hsl(var(--on-colored)) !important;
+}
+
+/* text-muted should use the muted-foreground variable (labels/help text) */
+.text-muted {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Ensure SVG icons inherit color; default to stroke (outline) not filled so borders follow theme
+   If an icon must be filled, add the class `fill-current` or set fill explicitly on the SVG. */
+svg {
+  color: inherit;
+  fill: none; /* don't fill icons globally */
+  stroke: currentColor; /* border/outline follows theme */
+}
+
+/* Allow specific illustrations to use fill by adding `allow-fill` class to the svg */
+svg.allow-fill {
+  fill: currentColor;
+}
+
+/* Make skeletons inside animate-pulse clearly visible in both themes.
+   Use --skeleton which has per-theme tuned values so skeletons remain visible
+   without impacting other uses of --muted. Many skeletons use Tailwind opacity
+   shorthands like bg-muted/2 which become very faint on light backgrounds;
+   here we force a visible background-color for elements inside animate-pulse
+   that reference bg-muted utilities. */
+.animate-pulse .bg-muted,
+.animate-pulse [class*="bg-muted/"] {
+  background-color: hsl(var(--skeleton)) !important;
+  opacity: 1 !important;
+}
+
+/* Also ensure very small skeleton bars used with bg-muted/2 get a slightly
+   stronger contrast in light mode and appropriate contrast in dark mode. */
+.animate-pulse [class*="bg-muted/2"] {
+  background-color: hsl(var(--skeleton)) !important;
+  opacity: 0.75 !important;
+}
+
+/* Placeholder color: use muted-foreground for readable placeholders in both modes
+   Apply to common form controls and force with !important to avoid being overridden
+   inside modals or colored containers. */
+input::placeholder,
+textarea::placeholder,
+select::placeholder,
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder,
+select::-webkit-input-placeholder,
+input::-moz-placeholder,
+textarea::-moz-placeholder,
+select::-moz-placeholder,
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder,
+select:-ms-input-placeholder {
+  color: hsl(var(--placeholder-foreground)) !important;
+  opacity: 1 !important;
+}
+
+/* Specific helper: allow a component to request the light-mode foreground
+   even if it's a secondary/tint variant. This is used by the Calendario
+   "Giorni lavorativi" Badge so it's visible in light mode. Do not override
+   in dark mode. */
+:root [data-light-foreground="true"],
+:root [data-light-foreground="true"] * {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Additional modal/card-scoped placeholder rule: some components use nested elements or
+   background utilities that may override ::placeholder. Target inputs/textareas/selects
+   inside dialog/card containers to ensure placeholders remain readable. */
+.fixed input::placeholder,
+.fixed textarea::placeholder,
+.fixed select::placeholder,
+.bg-card input::placeholder,
+.bg-card textarea::placeholder,
+.bg-card select::placeholder,
+.bg-background input::placeholder,
+.bg-background textarea::placeholder,
+.bg-background select::placeholder {
+  color: hsl(var(--placeholder-foreground)) !important;
+  opacity: 1 !important;
 }
 
 @layer components {

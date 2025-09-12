@@ -56,12 +56,12 @@ export function Settings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Impostazioni</h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-muted">
             Configura le impostazioni dell'azienda e dell'applicazione
           </p>
         </div>
         {saving && (
-          <div className="flex items-center gap-2 text-sm text-primary dark:text-primary">
+          <div className="flex items-center gap-2 text-sm text-primary">
             <Loader2 className="h-4 w-4 animate-spin" />
             Salvataggio in corso...
           </div>
@@ -232,7 +232,7 @@ export function Settings() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Notifiche Email</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-muted">
                   Ricevi notifiche via email per eventi importanti
                 </p>
               </div>
@@ -242,7 +242,7 @@ export function Settings() {
                   onCheckedChange={(checked) => updateSettings({ emailEnabled: checked })}
                   disabled
                 />
-                <span className="text-xs text-gray-400">Coming Soon</span>
+                <span className="text-xs text-muted">Coming Soon</span>
               </div>
             </div>
           </CardContent>

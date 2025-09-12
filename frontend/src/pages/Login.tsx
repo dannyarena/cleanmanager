@@ -79,7 +79,7 @@ export function Login() {
         {/* Logo */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-primary mb-2">CleanManager</h1>
-          <p className="text-gray-600">Sistema di gestione turni di pulizia</p>
+          <p className="text-muted">Sistema di gestione turni di pulizia</p>
         </div>
 
         {/* Login form */}

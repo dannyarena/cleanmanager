@@ -17,7 +17,7 @@ interface EmptyStateProps {
 
 // SVG Illustrations
 const CleaningIllustration = () => (
-  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-gray-300">
+  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-muted allow-fill">
     <circle cx="40" cy="40" r="35" fill="currentColor" opacity="0.1"/>
     <path d="M25 35h30v25c0 2.76-2.24 5-5 5H30c-2.76 0-5-2.24-5-5V35z" fill="currentColor" opacity="0.3"/>
     <rect x="35" y="15" width="10" height="25" rx="2" fill="currentColor" opacity="0.5"/>
@@ -27,7 +27,7 @@ const CleaningIllustration = () => (
 )
 
 const CalendarIllustration = () => (
-  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-gray-300">
+  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-muted allow-fill">
     <rect x="15" y="20" width="50" height="45" rx="4" fill="currentColor" opacity="0.1"/>
     <rect x="15" y="20" width="50" height="12" rx="4" fill="currentColor" opacity="0.3"/>
     <rect x="25" y="15" width="4" height="10" rx="2" fill="currentColor" opacity="0.5"/>
@@ -40,7 +40,7 @@ const CalendarIllustration = () => (
 )
 
 const UsersIllustration = () => (
-  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-gray-300">
+  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-muted allow-fill">
     <circle cx="30" cy="30" r="8" fill="currentColor" opacity="0.3"/>
     <circle cx="50" cy="30" r="8" fill="currentColor" opacity="0.3"/>
     <path d="M15 60c0-8.28 6.72-15 15-15s15 6.72 15 15" fill="currentColor" opacity="0.2"/>
@@ -49,7 +49,7 @@ const UsersIllustration = () => (
 )
 
 const SitesIllustration = () => (
-  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-gray-300">
+  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-muted allow-fill">
     <rect x="20" y="35" width="40" height="30" rx="2" fill="currentColor" opacity="0.1"/>
     <rect x="25" y="25" width="30" height="40" rx="2" fill="currentColor" opacity="0.2"/>
     <rect x="30" y="15" width="20" height="50" rx="2" fill="currentColor" opacity="0.3"/>
@@ -61,7 +61,7 @@ const SitesIllustration = () => (
 )
 
 const DefaultIllustration = () => (
-  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-gray-300">
+  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="text-muted allow-fill">
     <circle cx="40" cy="40" r="30" fill="currentColor" opacity="0.1"/>
     <path d="M35 35h10v10H35z" fill="currentColor" opacity="0.3"/>
   </svg>
@@ -92,15 +92,15 @@ export function EmptyState({
     )}>
       <div className="mb-6">
         {Icon ? (
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-            <Icon className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 bg-accent/3 rounded-full flex items-center justify-center">
+            <Icon className="w-8 h-8 text-muted" />
           </div>
         ) : (
           <IllustrationComponent />
         )}
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500 mb-6 max-w-sm leading-relaxed">{description}</p>
+      <h3 className="text-lg font-semibold text-card-foreground mb-2">{title}</h3>
+      <p className="text-muted mb-6 max-w-sm leading-relaxed">{description}</p>
       {action && (
         <Button onClick={action.onClick} className="bg-primary hover:bg-primary/90">
           {action.label}

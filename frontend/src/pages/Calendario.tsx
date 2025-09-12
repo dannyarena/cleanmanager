@@ -199,15 +199,15 @@ export function Calendario() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">Calendario Turni</h1>
-            {settings && (
-              <Badge variant="secondary" className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold text-card-foreground">Calendario Turni</h1>
+              {settings && (
+              <Badge data-light-foreground="true" variant="secondary" className="flex items-center gap-1">
                 <Info className="w-3 h-3" />
                 Giorni lavorativi: {formatWorkingDays()}
               </Badge>
             )}
           </div>
-          <p className="text-gray-600">{formatWeekRange()}</p>
+          <p className="text-muted">{formatWeekRange()}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={goToPreviousWeek}>
@@ -231,7 +231,7 @@ export function Calendario() {
         <CardContent className="p-0">
           <div className="grid grid-cols-7 border-b">
             {dayNames.map((dayName, index) => (
-              <div key={dayName} className="p-4 text-center font-medium text-gray-700 border-r last:border-r-0">
+              <div key={dayName} className="p-4 text-center font-medium text-muted border-r last:border-r-0">
                 {dayName}
               </div>
             ))}
@@ -246,8 +246,8 @@ export function Calendario() {
                     day.date.toDateString() === new Date().toDateString()
                       ? 'text-primary font-bold'
                       : day.isCurrentMonth
-                      ? 'text-gray-900'
-                      : 'text-gray-400'
+                      ? 'text-card-foreground'
+                      : 'text-muted'
                   }`}>
                     {day.date.getDate()}
                   </span>
@@ -275,10 +275,10 @@ export function Calendario() {
                 {/* Stato vuoto */}
                 {day.shifts.length === 0 && (
                   <div 
-                    className="h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-colors group"
+                    className="h-16 border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-border hover:bg-accent/1 transition-colors group"
                     onClick={() => handleNewShift(day.date)}
                   >
-                    <Plus className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                    <Plus className="w-4 h-4 text-muted group-hover:text-card-foreground" />
                   </div>
                 )}
               </div>

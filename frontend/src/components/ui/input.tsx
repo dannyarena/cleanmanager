@@ -13,36 +13,37 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-muted-foreground">
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && <span className="text-destructive ml-1">*</span>}
           </label>
         )}
         <input
           type={type}
           className={cn(
-            "flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
+            "flex h-10 w-full rounded-md border bg-card px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-colors",
             // Default state
-            "border-gray-300 focus:ring-primary-500",
+            "border-input focus:ring-primary",
             // Error state
-            error && "border-red-500 focus:ring-red-500",
+            error && "border-destructive focus:ring-destructive",
             // Success state
-            success && !error && "border-green-500 focus:ring-green-500",
+            success && !error && "border-success focus:ring-success",
             className
           )}
           ref={ref}
           {...props}
         />
         {error && (
-          <p className="text-sm text-red-600 flex items-center gap-1">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          <p className="text-sm text-destructive flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 20 20">
+              <path d="M10 18a8 8 0 100-16 8 8 0 000 16z" />
+              <path d="M10 13a1 1 0 100 2 1 1 0 000-2zM10 6v5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p className="text-sm text-gray-500">{helperText}</p>
+          <p className="text-sm text-muted">{helperText}</p>
         )}
       </div>
     )

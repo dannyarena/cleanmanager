@@ -51,7 +51,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 export function DialogContent({ className, children }: DialogContentProps) {
   return (
     <div className={cn(
-      "bg-white rounded-lg shadow-lg max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto",
+      "bg-card rounded-lg shadow-lg max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-border",
       className
     )}>
       {children}
@@ -61,7 +61,7 @@ export function DialogContent({ className, children }: DialogContentProps) {
 
 export function DialogHeader({ children }: DialogHeaderProps) {
   return (
-    <div className="px-6 py-4 border-b border-gray-200">
+    <div className="px-6 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
       {children}
     </div>
   )
@@ -69,7 +69,7 @@ export function DialogHeader({ children }: DialogHeaderProps) {
 
 export function DialogTitle({ children }: DialogTitleProps) {
   return (
-    <h2 className="text-lg font-semibold text-gray-900">
+    <h2 className="text-lg font-semibold text-card-foreground">
       {children}
     </h2>
   )
@@ -77,7 +77,7 @@ export function DialogTitle({ children }: DialogTitleProps) {
 
 export function DialogDescription({ children }: DialogDescriptionProps) {
   return (
-    <p className="text-sm text-gray-600 mt-1">
+    <p className="text-sm text-muted mt-1">
       {children}
     </p>
   )
@@ -85,7 +85,7 @@ export function DialogDescription({ children }: DialogDescriptionProps) {
 
 export function DialogFooter({ children }: DialogFooterProps) {
   return (
-    <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+    <div className="px-6 py-4 flex justify-end space-x-2" style={{ borderTop: '1px solid hsl(var(--border))' }}>
       {children}
     </div>
   )

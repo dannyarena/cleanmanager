@@ -99,9 +99,9 @@ export function Clienti() {
       sortable: true,
       render: (value, client) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
+          <div className="font-medium text-card-foreground">{value}</div>
           {client.email && (
-            <div className="text-sm text-gray-500">{client.email}</div>
+            <div className="text-sm text-muted">{client.email}</div>
           )}
         </div>
       )
@@ -128,8 +128,8 @@ export function Clienti() {
             title={`Visualizza siti di ${client.name}`}
             className="flex items-center space-x-2"
           >
-            <Building2 className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-700">{client._count?.sites || 0}</span>
+            <Building2 className="w-4 h-4 text-muted" />
+            <span className="text-sm text-muted">{client._count?.sites || 0}</span>
           </Button>
         </div>
       )
@@ -169,8 +169,8 @@ export function Clienti() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clienti</h1>
-          <p className="text-gray-600">Gestisci i tuoi clienti aziendali</p>
+          <h1 className="text-2xl font-bold text-card-foreground">Clienti</h1>
+          <p className="text-muted">Gestisci i tuoi clienti aziendali</p>
         </div>
         <Button onClick={() => setShowClientModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -183,7 +183,7 @@ export function Clienti() {
         <CardContent className="pt-6">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted w-4 h-4" />
               <Input
                 placeholder="Cerca clienti per nome, email o telefono..."
                 value={searchQuery}
@@ -197,7 +197,7 @@ export function Clienti() {
 
       {/* Results summary */}
       {!loading && (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted">
           {clients.length === 0
             ? 'Nessun cliente ancora'
             : clients.length === 1

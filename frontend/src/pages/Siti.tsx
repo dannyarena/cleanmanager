@@ -161,8 +161,8 @@ export function Siti() {
       sortable: true,
       render: (value, site) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          <div className="flex items-center text-sm text-gray-500 mt-1">
+          <div className="font-medium text-card-foreground">{value}</div>
+          <div className="flex items-center text-sm text-muted mt-1">
             <MapPin className="w-3 h-3 mr-1" />
             {site.address}
           </div>
@@ -175,9 +175,9 @@ export function Siti() {
       sortable: true,
       render: (_, site) => (
         <div>
-          <div className="font-medium text-gray-900">{site.client?.name || '-'}</div>
+          <div className="font-medium text-card-foreground">{site.client?.name || '-'}</div>
           {site.client?.email && (
-            <div className="text-sm text-gray-500">{site.client.email}</div>
+            <div className="text-sm text-muted">{site.client.email}</div>
           )}
         </div>
       )
@@ -187,14 +187,14 @@ export function Siti() {
       label: 'Checklist',
       render: (_, site) => (
         <div className="flex items-center space-x-1">
-          <CheckSquare className="w-4 h-4 text-gray-400" />
+          <CheckSquare className="w-4 h-4 text-muted" />
           {/* make the count a button that opens the checklist modal */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => { setChecklistSiteId(site.id); setChecklistOpen(true) }}
             title="Gestisci checklist"
-            className="text-sm text-gray-700 hover:underline"
+            className="text-sm text-muted hover:underline"
           >
             {(site.checkItemsCount ?? site.checklists?.length ?? site._count?.checklists ?? 0)} voci
           </Button>
@@ -213,7 +213,7 @@ export function Siti() {
       render: (_, site) => (
         <div className="flex items-center space-x-2">
           <button
-            className="inline-flex items-center px-2 py-1 bg-gray-600 text-white rounded shadow border border-gray-600 hover:bg-gray-700"
+            className="inline-flex items-center px-2 py-1 bg-muted/6 text-card-foreground rounded shadow border border-muted/6 hover:bg-muted/7"
             onClick={() => { setEditingSite(site); setSiteModalOpen(true); }}
             title="Modifica sito"
           >
@@ -236,8 +236,8 @@ export function Siti() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Siti</h1>
-          <p className="text-gray-600">Gestisci i siti dei tuoi clienti</p>
+          <h1 className="text-2xl font-bold text-card-foreground">Siti</h1>
+          <p className="text-muted">Gestisci i siti dei tuoi clienti</p>
         </div>
   <Button onClick={() => setSiteModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -250,7 +250,7 @@ export function Siti() {
         <CardContent className="pt-6">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted w-4 h-4" />
               <Input
                 placeholder="Cerca siti per nome o indirizzo..."
                 value={searchQuery}
@@ -278,7 +278,7 @@ export function Siti() {
 
       {/* Results summary */}
       {!loading && (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted">
           {sites.length === 0
             ? 'Nessun sito ancora'
             : sites.length === 1

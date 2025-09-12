@@ -76,27 +76,27 @@ export const ClientModal: React.FC<Props> = ({ open, onClose, onCreated, client,
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nome *</label>
+            <label className="block text-sm font-medium text-muted-foreground">Nome *</label>
             <Input value={form.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Nome cliente" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium text-muted-foreground">Email</label>
             <Input type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} placeholder="email@esempio.it" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Telefono</label>
+            <label className="block text-sm font-medium text-muted-foreground">Telefono</label>
             <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="+39 02 1234567" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Indirizzo</label>
+            <label className="block text-sm font-medium text-muted-foreground">Indirizzo</label>
             <Input value={form.address} onChange={(e) => handleChange('address', e.target.value)} placeholder="Via Roma 1, Milano" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Note</label>
+            <label className="block text-sm font-medium text-muted-foreground">Note</label>
             <Textarea value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Eventuali note" />
           </div>
 

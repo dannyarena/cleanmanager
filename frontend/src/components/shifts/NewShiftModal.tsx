@@ -270,7 +270,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                   <span className="text-sm text-muted-foreground">Crea un nuovo turno assegnando siti e operatori</span>
                 </div>
                 {formData.hasRecurrence && (
-                  <Badge variant="secondary" className="ml-2">Ricorrente</Badge>
+                  <Badge data-light-foreground="true" variant="secondary" className="ml-2">Ricorrente</Badge>
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -375,7 +375,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             }
                             className="w-20"
                           />
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-muted">
                             {formData.recurrence.frequency === 'daily' ? 'giorni' : 'settimane'}
                           </span>
                         </div>
@@ -428,7 +428,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             className="w-20"
                             disabled={formData.recurrence.endType !== 'count'}
                           />
-                          <span className="text-sm text-gray-600">occorrenze</span>
+                          <span className="text-sm text-muted">occorrenze</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <input

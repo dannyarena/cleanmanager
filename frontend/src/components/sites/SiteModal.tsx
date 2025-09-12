@@ -101,17 +101,17 @@ export const SiteModal: React.FC<Props> = ({ open, onClose, onCreated, site, onU
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
-						<label className="block text-sm font-medium text-gray-700">Nome *</label>
+						<label className="block text-sm font-medium text-muted-foreground">Nome *</label>
 						<Input value={form.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Nome sito" />
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700">Indirizzo *</label>
+						<label className="block text-sm font-medium text-muted-foreground">Indirizzo *</label>
 						<Input value={form.address} onChange={(e) => handleChange('address', e.target.value)} placeholder="Via Roma 1, Milano" />
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700">Cliente *</label>
+						<label className="block text-sm font-medium text-muted-foreground">Cliente *</label>
 						<select
 							value={form.clientId}
 							onChange={(e) => handleChange('clientId', e.target.value)}
@@ -125,7 +125,7 @@ export const SiteModal: React.FC<Props> = ({ open, onClose, onCreated, site, onU
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700">Note</label>
+						<label className="block text-sm font-medium text-muted-foreground">Note</label>
 						<Textarea value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Eventuali note" />
 					</div>
 

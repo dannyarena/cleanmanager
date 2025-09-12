@@ -92,10 +92,10 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   }
 
   const styles = {
-    success: 'bg-white border-l-4 border-l-success text-gray-900',
-    error: 'bg-white border-l-4 border-l-danger text-gray-900',
-    warning: 'bg-white border-l-4 border-l-yellow-500 text-gray-900',
-    info: 'bg-white border-l-4 border-l-primary text-gray-900'
+    success: 'bg-card border-l-4 border-l-success text-card-foreground',
+    error: 'bg-card border-l-4 border-l-danger text-card-foreground',
+    warning: 'bg-card border-l-4 border-l-yellow-500 text-card-foreground',
+    info: 'bg-card border-l-4 border-l-primary text-card-foreground'
   }
 
   const iconStyles = {
@@ -115,14 +115,14 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
       <div className="flex items-start gap-3">
         <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', iconStyles[toast.type])} />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm">{toast.title}</p>
+          <p className="font-medium text-sm text-card-foreground">{toast.title}</p>
           {toast.description && (
-            <p className="text-sm text-gray-600 mt-1">{toast.description}</p>
+            <p className="text-sm text-muted mt-1">{toast.description}</p>
           )}
         </div>
         <button
           onClick={() => onRemove(toast.id)}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+          className="flex-shrink-0 text-muted hover:text-card-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>

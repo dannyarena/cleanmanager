@@ -42,10 +42,15 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    // Consider variants that have a colored background and should force inner text/icons to be "on-colored"
+    const coloredVariants = new Set(["default", "destructive", "secondary"])
+    const dataColored = coloredVariants.has(variant || "default") ? { 'data-colored': 'true' } : {}
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        {...dataColored}
         {...props}
       />
     )

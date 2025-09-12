@@ -293,7 +293,7 @@ export function EditShiftModal({
                   </span>
                 </div>
                 {shift.recurrence && (
-                  <Badge variant="secondary" className="ml-2">Ricorrente</Badge>
+                  <Badge data-light-foreground="true" variant="secondary" className="ml-2">Ricorrente</Badge>
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -365,8 +365,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'single' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'single'
-                              ? 'border-primary bg-white dark:bg-transparent'
-                              : 'border-transparent bg-white/60 dark:bg-transparent'
+                              ? 'border-primary bg-accent/3 text-card-foreground'
+                              : 'border-transparent bg-accent/2 text-card-foreground'
                           }`}
                         >
                           Solo questa occorrenza
@@ -376,8 +376,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'this_and_future' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'this_and_future'
-                              ? 'border-primary bg-white dark:bg-transparent'
-                              : 'border-transparent bg-white/60 dark:bg-transparent'
+                              ? 'border-primary bg-accent/3 text-card-foreground'
+                              : 'border-transparent bg-accent/2 text-card-foreground'
                           }`}
                         >
                           Da questa in poi
@@ -387,8 +387,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'series' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'series'
-                              ? 'border-primary bg-white dark:bg-transparent'
-                              : 'border-transparent bg-white/60 dark:bg-transparent'
+                              ? 'border-primary bg-accent/3 text-card-foreground'
+                              : 'border-transparent bg-accent/2 text-card-foreground'
                           }`}
                         >
                           Tutta la serie

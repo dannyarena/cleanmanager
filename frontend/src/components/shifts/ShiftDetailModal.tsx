@@ -241,10 +241,10 @@ export function ShiftDetailModal({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <div className="text-lg font-semibold">
+                    <div className="text-lg font-semibold text-card-foreground">
                       {formatDate(shift.date)}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted">
                       {formatTime(shift.date)}
                     </div>
                     {shift.recurrence && (
@@ -265,11 +265,11 @@ export function ShiftDetailModal({
                 </CardHeader>
                 <CardContent>
                   {shift.notes ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm text-muted whitespace-pre-wrap">
                       {shift.notes}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-500 italic">
+                    <p className="text-sm text-muted italic">
                       Nessuna nota aggiunta
                     </p>
                   )}
@@ -296,7 +296,7 @@ export function ShiftDetailModal({
 
               <TabsContent value="sites" className="space-y-4">
                 {shift.sites.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted">
                     Nessun sito assegnato
                   </div>
                 ) : (
@@ -306,10 +306,10 @@ export function ShiftDetailModal({
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{site.name}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{site.address}</p>
+                              <h4 className="font-medium text-card-foreground">{site.name}</h4>
+                              <p className="text-sm text-muted mt-1">{site.address}</p>
                               {site.client && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-muted mt-1">
                                   Cliente: {site.client.name}
                                 </p>
                               )}
@@ -334,7 +334,7 @@ export function ShiftDetailModal({
 
               <TabsContent value="operators" className="space-y-4">
                 {shift.operators.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted">
                     Nessun operatore assegnato
                   </div>
                 ) : (
@@ -348,10 +348,10 @@ export function ShiftDetailModal({
                                 <Users className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <h4 className="font-medium text-gray-900">
+                                <h4 className="font-medium text-card-foreground">
                                   {operator.firstName} {operator.lastName}
                                 </h4>
-                                <p className="text-sm text-gray-600">{operator.email}</p>
+                                <p className="text-sm text-muted">{operator.email}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -391,25 +391,25 @@ export function ShiftDetailModal({
                           </CardHeader>
                           <CardContent>
                             {siteChecklist.length === 0 ? (
-                              <p className="text-sm text-gray-500 italic">
+                              <p className="text-sm text-muted italic">
                                 Nessuna checklist configurata per questo sito
                               </p>
                             ) : (
                               <div className="space-y-3">
                                 {siteChecklist.map((item, index) => (
-                                  <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <div className="w-6 h-6 border-2 border-gray-300 rounded flex items-center justify-center text-xs font-medium bg-white">
+                                  <div key={item.id} className="flex items-start gap-3 p-3 bg-accent/2 rounded-lg border border-border">
+                                    <div className="w-6 h-6 border-2 rounded flex items-center justify-center text-xs font-medium bg-card border-border text-card-foreground">
                                       {index + 1}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
-                                        <h5 className="font-medium text-gray-900">{item.title}</h5>
+                                        <h5 className="font-medium text-card-foreground">{item.title}</h5>
                                         {item.required && (
                                           <Badge variant="destructive" className="text-xs">Obbligatorio</Badge>
                                         )}
                                       </div>
                                       {item.description && (
-                                        <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                                        <p className="text-sm text-muted mt-1">{item.description}</p>
                                       )}
                                     </div>
                                   </div>

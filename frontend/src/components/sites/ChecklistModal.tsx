@@ -85,11 +85,11 @@ const ChecklistModal: React.FC<Props> = ({ open, onClose, siteId, onSaved }) => 
           </div>
 
           <div className="space-y-3">
-            {loading && <div className="text-sm text-gray-500">Caricamento...</div>}
-            {!loading && items.length === 0 && <div className="text-sm text-gray-500">Nessuna attività presente</div>}
+            {loading && <div className="text-sm text-muted">Caricamento...</div>}
+            {!loading && items.length === 0 && <div className="text-sm text-muted">Nessuna attività presente</div>}
 
             {items.map((it, idx) => (
-              <div key={idx} className="p-3 border border-input rounded-md bg-white">
+              <div key={idx} className="p-3 border border-input rounded-md bg-card">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <Input value={it.title || ''} onChange={(e) => updateItem(idx, { title: e.target.value })} placeholder="Titolo attività" />
