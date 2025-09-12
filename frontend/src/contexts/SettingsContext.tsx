@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { apiService } from '../services/api'
+import { authService } from '../services/auth'
 import { toast } from 'sonner'
 
 export interface TenantSettings {
@@ -53,6 +54,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [error, setError] = useState<string | null>(null)
 
   const loadSettings = async () => {
+    if (!authService.isAuthenticated()) {
+      setSettings(defaultSettings)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -76,7 +83,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   }
 
   const updateSettings = async (newSettings: Partial<TenantSettings>) => {
-    if (!settings || saving) return
+    if (!settings || saving || !authService.isAuthenticated()) return
 
     try {
       setSaving(true)
@@ -108,9 +115,15 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     await loadSettings()
   }
 
-  // Carica le impostazioni al mount del provider
+  // Carica le impostazioni al mount del provider solo se autenticato
   useEffect(() => {
-    loadSettings()
+    if (authService.isAuthenticated()) {
+      loadSettings()
+    } else {
+      // Se non autenticato, usa le impostazioni di default
+      setSettings(defaultSettings)
+      setLoading(false)
+    }
   }, [])
 
   const contextValue: SettingsContextType = {
