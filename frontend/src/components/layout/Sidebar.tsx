@@ -25,7 +25,7 @@ export function Sidebar() {
   const user = authService.getUser()
 
   return (
-    <div className="flex flex-col w-64 bg-white shadow-lg">
+    <div className="flex flex-col w-64 bg-card shadow-lg border-r border-border">
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4 bg-primary">
         <img src={logo} alt="CleanManager" className="h-35 w-full max-w-[250px] object-contain" />
@@ -43,8 +43,8 @@ export function Sidebar() {
                 cn(
                   'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
                   isActive
-                    ? 'bg-primary text-white'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-card-foreground hover:bg-accent hover:text-accent-foreground'
                 )
               }
             >
@@ -56,18 +56,18 @@ export function Sidebar() {
       </nav>
 
       {/* User info */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-border">
         <div className="flex items-center">
           <div className="flex-shrink-0">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-primary-foreground">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </span>
             </div>
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-card-foreground">{user?.name}</p>
+            <p className="text-xs text-muted-foreground">
               {user?.role === 'admin' ? 'Amministratore' : 
                user?.isManager ? 'Manager' : 'Operatore'}
             </p>

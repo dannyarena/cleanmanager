@@ -68,7 +68,8 @@ app.get('/api/info', (req, res) => {
       clients: '/api/clients',
       sites: '/api/sites',
       operators: '/api/operators',
-      shifts: '/api/shifts'
+      shifts: '/api/shifts',
+      settings: '/api/settings'
     }
   });
 });
@@ -96,7 +97,8 @@ app.use('*', (req, res) => {
       '/api/clients',
       '/api/sites',
       '/api/operators',
-      '/api/shifts'
+      '/api/shifts',
+      '/api/settings'
     ]
   });
 });

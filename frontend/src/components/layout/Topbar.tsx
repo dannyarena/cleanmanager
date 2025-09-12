@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { LogOut, Settings } from 'lucide-react'
+import { LogOut, Settings, Moon, Sun } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { authService } from '../../services/auth'
+import { useTheme } from '../../contexts/ThemeContext'
+import { useSettings } from '../../contexts/SettingsContext'
 
 const pageNames: Record<string, string> = {
   '/': 'Dashboard',
@@ -17,6 +19,8 @@ export function Topbar() {
   const location = useLocation()
   const user = authService.getUser()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const { loading } = useSettings()
   
   const currentPageName = pageNames[location.pathname] || 'CleanManager'
 
@@ -25,11 +29,11 @@ export function Topbar() {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-background shadow-sm border-b border-border">
       <div className="flex items-center justify-between h-16 px-6">
         {/* Page title */}
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             {currentPageName}
           </h1>
         </div>
@@ -39,8 +43,8 @@ export function Topbar() {
           {/* User info */}
           <div className="flex items-center min-w-[120px]">
             <div className="flex flex-col justify-center mr-3">
-              <p className="text-sm font-medium text-gray-900 leading-tight">{user ? `${user.firstName} ${user.lastName}` : ''}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-foreground leading-tight">{user ? `${user.firstName} ${user.lastName}` : ''}</p>
+              <p className="text-xs text-muted-foreground">
                 {user?.role === 'admin' ? 'Amministratore' : 
                  user?.isManager ? 'Manager' : 'Operatore'}
               </p>
@@ -57,7 +61,18 @@ export function Topbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-gray-500 hover:text-gray-700"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title="Cambia tema"
+              disabled={loading}
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground"
               title="Impostazioni"
               onClick={() => setSettingsOpen(true)}
             >
@@ -68,7 +83,7 @@ export function Topbar() {
               variant="ghost"
               size="icon"
               onClick={handleLogout}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-muted-foreground hover:text-foreground"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />

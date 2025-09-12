@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSettings } from './SettingsContext'
 import { hexToHsl } from '../lib/utils'
 
@@ -25,29 +25,47 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { settings, updateSettings } = useSettings()
+  const [lsTheme, setLsTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cm_theme') === 'dark' ? 'dark' : 'light'
+    }
+    return 'light'
+  })
 
-  // Applica il tema e il colore primario
+  // Applica il tema al documento
   useEffect(() => {
-    if (!settings) return
-    
-    const root = document.documentElement
-    
-    // Applica la classe dark su <html> quando theme === 'dark'
-    if (settings.theme === 'dark') {
-      root.classList.add('dark')
+    const serverTheme = settings?.theme?.toLowerCase() as 'light' | 'dark' | undefined
+    const theme = serverTheme ?? lsTheme
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
     } else {
-      root.classList.remove('dark')
+      document.documentElement.classList.remove('dark')
+    }
+  }, [settings?.theme, lsTheme])
+
+  // Applica il colore primario
+  useEffect(() => {
+    const primaryColor = settings?.primaryColor || '#2563EB'
+    const hsl = hexToHsl(primaryColor)
+    document.documentElement.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`)
+  }, [settings?.primaryColor])
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    // Applica immediatamente il tema
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
     }
     
-    // Converte primaryColor da hex a HSL e applica --primary
-    const hsl = hexToHsl(settings.primaryColor)
-    root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`)
-  }, [settings?.theme, settings?.primaryColor])
-
-
-
-  const setTheme = async (newTheme: 'light' | 'dark') => {
-    await updateSettings({ theme: newTheme })
+    // Salva nel localStorage
+    localStorage.setItem('cm_theme', newTheme)
+    
+    // Aggiorna lo stato locale
+    setLsTheme(newTheme)
+    
+    // Persisti sul server in background (converti in maiuscolo per il backend)
+    updateSettings({ theme: newTheme.toUpperCase() as 'LIGHT' | 'DARK' })
   }
 
   const setPrimaryColor = async (newColor: string) => {
@@ -56,7 +74,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   return (
     <ThemeContext.Provider value={{
-      theme: settings?.theme || 'light',
+      theme: (settings?.theme?.toLowerCase() as 'light' | 'dark') ?? lsTheme,
       primaryColor: settings?.primaryColor || '#2563EB',
       setTheme,
       setPrimaryColor

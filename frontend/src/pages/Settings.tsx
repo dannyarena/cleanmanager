@@ -115,11 +115,8 @@ export function Settings() {
               <Label>Tema</Label>
               <Select
                 value={settings.theme}
-                onValueChange={(value: 'light' | 'dark') => {
-                  updateSettings({ theme: value })
-                  setTheme(value)
-                }}
-                disabled={saving}
+                onValueChange={(value: 'light' | 'dark') => setTheme(value)}
+                disabled={loading || saving}
               >
                 <SelectTrigger>
                   <SelectValue />

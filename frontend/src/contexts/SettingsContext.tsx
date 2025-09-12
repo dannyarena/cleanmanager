@@ -67,7 +67,18 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const settingsData = await apiService.getSettings()
       
       if (settingsData) {
-        setSettings(settingsData)
+        // Controlla se c'è un tema in localStorage che potrebbe essere più recente
+        const lsTheme = localStorage.getItem('cm_theme')
+        if (lsTheme && (lsTheme === 'light' || lsTheme === 'dark') && lsTheme !== settingsData.theme) {
+          // Se il tema in localStorage è diverso da quello del server, usa quello di localStorage
+          // e aggiorna il server in background
+          const mergedSettings = { ...settingsData, theme: lsTheme }
+          setSettings(mergedSettings)
+          // Aggiorna il server in background senza aspettare
+          apiService.updateSettings({ theme: lsTheme }).catch(console.error)
+        } else {
+          setSettings(settingsData)
+        }
       } else {
         // Se non ci sono impostazioni salvate, usa i default
         setSettings(defaultSettings)
@@ -83,27 +94,32 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   }
 
   const updateSettings = async (newSettings: Partial<TenantSettings>) => {
-    if (!settings || saving || !authService.isAuthenticated()) return
+    // DOPO — consenti update anche se settings è null (merge con default)
+    if (saving || !authService.isAuthenticated()) return
 
     try {
       setSaving(true)
-      const updatedSettings = { ...settings, ...newSettings }
       
-      // Aggiorna immediatamente lo stato locale per UI reattiva
+      // Costruisci un "base" per l'ottimismo
+      const base = settings ?? defaultSettings
+      const updatedSettings = { ...base, ...newSettings }
+      
+      // UI reattiva anche a freddo
       setSettings(updatedSettings)
       
       // Salva sul server
       const updatedData = await apiService.updateSettings(newSettings)
       
       toast.success('Impostazioni salvate con successo')
-      // Aggiorna con i dati dal server per sicurezza
+      // Se il server risponde, riallinea
       if (updatedData) {
         setSettings(updatedData)
       }
     } catch (err: any) {
       console.error('Errore nel salvataggio delle impostazioni:', err)
       // Rollback in caso di errore
-      setSettings(settings)
+      const rollbackSettings = settings ?? defaultSettings
+      setSettings(rollbackSettings)
       const errorMessage = err?.response?.data?.error || 'Errore nel salvataggio delle impostazioni'
       toast.error(errorMessage)
     } finally {
