@@ -262,7 +262,7 @@ export function Siti() {
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="w-full h-10 px-3 py-2 text-sm border bg-card rounded-md file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-colors border-input focus:ring-primary"
               >
                 <option value="">Tutti i clienti</option>
                 {clients.map((client) => (

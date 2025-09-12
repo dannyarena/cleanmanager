@@ -46,6 +46,42 @@ interface OperatorConflict {
   }>
 }
 
+// Helper: rende l'input date interamente cliccabile (showPicker)
+function useClickableDatePicker<T extends HTMLInputElement>() {
+  const ref = useRef<T | null>(null)
+  const openPicker = () => {
+    const el = ref.current
+    if (!el) return
+    // Alcuni browser richiedono il focus prima/poi
+    try {
+      // @ts-expect-error: showPicker non è tipizzato in tutti gli ambienti
+      if (typeof el.showPicker === 'function') el.showPicker()
+      else el.focus()
+    } catch {
+      el.focus()
+    }
+  }
+  const handlers = {
+    onClick: (e: React.MouseEvent<T>) => {
+      // Evita selezione testo e apri il picker
+      e.preventDefault()
+      openPicker()
+    },
+    onPointerDown: (e: React.PointerEvent<T>) => {
+      // Garantisce apertura anche su mobile
+      e.preventDefault()
+      openPicker()
+    },
+    onKeyDown: (e: React.KeyboardEvent<T>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        openPicker()
+      }
+    }
+  }
+  return { ref, handlers }
+}
+
 export function EditShiftModal({
   open,
   onClose,
@@ -69,12 +105,13 @@ export function EditShiftModal({
   const [conflicts, setConflicts] = useState<OperatorConflict[]>([])
   const [showConflicts, setShowConflicts] = useState(false)
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
-  // FIX: 'single' come valore valido (prima c'era 'occurrence')
   const [updateAction, setUpdateAction] = useState<UpdateAction>({ type: 'single', confirmed: false })
 
-  // UI: ricerche locali per liste
   const [siteQuery, setSiteQuery] = useState('')
   const [opQuery, setOpQuery] = useState('')
+
+  // DATE: hook per rendere il campo data totalmente cliccabile
+  const datePicker = useClickableDatePicker<HTMLInputElement>()
 
   // snapshot iniziale per dirty check
   const initialFormRef = useRef<FormData | null>(null)
@@ -107,7 +144,6 @@ export function EditShiftModal({
 
   useEffect(() => {
     if (formData.operatorIds.length > 0 && formData.date && shift) {
-      // backend gestirà i conflitti in submit; qui azzeriamo per UI pulita
       setConflicts([])
     } else {
       setConflicts([])
@@ -248,7 +284,6 @@ export function EditShiftModal({
   const selectedSites = sites.filter(s => formData.siteIds.includes(s.id))
   const selectedOperators = operators.filter(o => formData.operatorIds.includes(o.id))
 
-  // filtri locali
   const filteredSites = useMemo(
     () =>
       sites.filter(
@@ -278,7 +313,6 @@ export function EditShiftModal({
           rounded-2xl
         "
       >
-        {/* Header sticky */}
         <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
           <DialogHeader className="px-6 pt-5 pb-4">
             <DialogTitle className="flex items-center justify-between">
@@ -293,7 +327,7 @@ export function EditShiftModal({
                   </span>
                 </div>
                 {shift.recurrence && (
-                  <Badge data-light-foreground="true" variant="secondary" className="ml-2">Ricorrente</Badge>
+                  <Badge variant="secondary" className="ml-2">Ricorrente</Badge>
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -303,12 +337,9 @@ export function EditShiftModal({
           </DialogHeader>
         </div>
 
-        {/* Body scrollable */}
         <form onSubmit={handleSubmit} className="max-h-[78vh] overflow-y-auto px-6 py-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Colonna sinistra */}
             <div className="space-y-6">
-              {/* Card info base */}
               <section className="rounded-xl border p-4 lg:p-5">
                 <div className="mb-4">
                   <h3 className="font-semibold">Informazioni di base</h3>
@@ -333,6 +364,9 @@ export function EditShiftModal({
                       value={formData.date}
                       onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                       required
+                      ref={datePicker.ref}
+                      {...datePicker.handlers}
+                      className="cursor-pointer"
                     />
                   </div>
                 </div>
@@ -349,7 +383,6 @@ export function EditShiftModal({
                 </div>
               </section>
 
-              {/* Card conferma ricorrenza */}
               {showUpdateConfirm && shift.recurrence && (
                 <section className="rounded-xl border p-4 lg:p-5 bg-primary/10 dark:bg-primary/20">
                   <div className="flex items-start gap-3">
@@ -365,8 +398,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'single' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'single'
-                              ? 'border-primary bg-accent/3 text-card-foreground'
-                              : 'border-transparent bg-accent/2 text-card-foreground'
+                              ? 'border-primary bg-white dark:bg-transparent'
+                              : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >
                           Solo questa occorrenza
@@ -376,8 +409,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'this_and_future' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'this_and_future'
-                              ? 'border-primary bg-accent/3 text-card-foreground'
-                              : 'border-transparent bg-accent/2 text-card-foreground'
+                              ? 'border-primary bg-white dark:bg-transparent'
+                              : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >
                           Da questa in poi
@@ -387,8 +420,8 @@ export function EditShiftModal({
                           onClick={() => setUpdateAction(a => ({ ...a, type: 'series' }))}
                           className={`px-3 py-2 rounded-lg border text-sm ${
                             updateAction.type === 'series'
-                              ? 'border-primary bg-accent/3 text-card-foreground'
-                              : 'border-transparent bg-accent/2 text-card-foreground'
+                              ? 'border-primary bg-white dark:bg-transparent'
+                              : 'border-transparent bg-white/60 dark:bg-transparent'
                           }`}
                         >
                           Tutta la serie
@@ -408,7 +441,6 @@ export function EditShiftModal({
                 </section>
               )}
 
-              {/* Warning conflitti */}
               {conflicts.length > 0 && (
                 <Alert className="border-orange-200 bg-orange-50">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -448,7 +480,6 @@ export function EditShiftModal({
                 </Alert>
               )}
 
-              {/* Errori */}
               {error && (
                 <Alert className="border-red-200 bg-red-50">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -457,9 +488,7 @@ export function EditShiftModal({
               )}
             </div>
 
-            {/* Colonna destra */}
             <div className="space-y-6">
-              {/* SITI */}
               <section className="rounded-xl border p-4 lg:p-5">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
@@ -514,7 +543,6 @@ export function EditShiftModal({
                 </div>
               </section>
 
-              {/* OPERATORI */}
               <section className="rounded-xl border p-4 lg:p-5">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
@@ -576,7 +604,6 @@ export function EditShiftModal({
             </div>
           </div>
 
-          {/* Footer sticky (mostrato solo se non stiamo mostrando la conferma ricorrenza) */}
           {!showUpdateConfirm && (
             <div className="sticky bottom-0 pt-5 mt-6 bg-gradient-to-t from-background via-background/80 to-transparent">
               <DialogFooter className="gap-2 border-t pt-4">

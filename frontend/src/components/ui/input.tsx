@@ -33,6 +33,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           {...props}
         />
+        {/* date icon moved to specific modal to avoid duplicate visuals */}
         {error && (
           <p className="text-sm text-destructive flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 20 20">

@@ -57,10 +57,10 @@
     
   /* Skeleton color in dark mode (lighter than dark background) */
   --skeleton: 0 0% 25%;
-  /* Skeleton / muted background in dark mode: light-gray (not pure white) */
-  --muted: 0 0% 75%;
-  /* Muted text in dark mode: white */
-  --muted-foreground: 0 0% 100%;
+  /* Skeleton / muted background in dark mode: slightly darker gray to improve contrast for bars */
+  --muted: 0 0% 68%;
+  /* Muted text in dark mode: softer gray (not full white) for secondary/auxiliary info */
+  --muted-foreground: 0 0% 65%;
   /* Placeholder-specific foreground in dark mode (less contrast than normal text) */
   --placeholder-foreground: 210 10% 65%;
     --accent: 217.2 32.6% 17.5%;
@@ -162,6 +162,46 @@ svg.allow-fill {
   opacity: 0.75 !important;
 }
 
+/* Themed scrollbar styles for dialog/card scrollable containers.
+   Apply a subtle thin scrollbar that matches the card background and ring tokens.
+   We style both the modern scrollbar-color and webkit pseudo-elements for broader support. */
+.dialog-content,
+.max-h-\[90vh\],
+.overflow-y-auto,
+.overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) hsl(var(--card));
+}
+
+/* WebKit-based browsers */
+.dialog-content::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dialog-content::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track {
+  background: hsl(var(--card));
+}
+.dialog-content::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+  border: 2px solid hsl(var(--card)); /* create padding effect */
+}
+
+/* Dark mode tweaks: use lighter thumb on dark backgrounds for contrast */
+.dark .dialog-content::-webkit-scrollbar-thumb,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb,
+.dark .overflow-auto::-webkit-scrollbar-thumb {
+  background-color: hsl(0 0% 40%);
+  border: 2px solid hsl(var(--card));
+}
+
+
 /* Placeholder color: use muted-foreground for readable placeholders in both modes
    Apply to common form controls and force with !important to avoid being overridden
    inside modals or colored containers. */
@@ -180,6 +220,30 @@ select:-ms-input-placeholder {
   color: hsl(var(--placeholder-foreground)) !important;
   opacity: 1 !important;
 }
+
+/* Autofill / password manager styling: override browser default yellow/blue backgrounds
+   so autofilled inputs match the card background and theme colors. Use box-shadow trick
+   which is commonly used to override WebKit autofill background. */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  caret-color: hsl(var(--foreground)) !important;
+  -webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset !important;
+  box-shadow: 0 0 0px 1000px hsl(var(--card)) inset !important;
+  background-clip: padding-box !important;
+  border-color: hsl(var(--input)) !important;
+}
+
+/* Firefox autofill */
+input:-moz-autofill,
+textarea:-moz-autofill,
+select:-moz-autofill {
+  box-shadow: 0 0 0px 1000px hsl(var(--card)) inset !important;
+  -moz-text-fill-color: hsl(var(--foreground)) !important;
+  caret-color: hsl(var(--foreground)) !important;
+}
+
 
 /* Specific helper: allow a component to request the light-mode foreground
    even if it's a secondary/tint variant. This is used by the Calendario

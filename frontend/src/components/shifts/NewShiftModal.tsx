@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '../ui/alert'
 import { Calendar, Users, MapPin, AlertTriangle, X } from 'lucide-react'
 import { apiService } from '../../services/api'
 import { Site, User, CreateShiftRequest } from '../../types'
+import ReactDOM from 'react-dom'
 
 interface NewShiftModalProps {
   open: boolean
@@ -47,6 +48,39 @@ interface OperatorConflict {
   }>
 }
 
+// Helper riutilizzabile per rendere gli input date interamente cliccabili
+function useClickableDatePicker<T extends HTMLInputElement>() {
+  const ref = React.useRef<T | null>(null)
+  const openPicker = () => {
+    const el = ref.current
+    if (!el) return
+    try {
+      // @ts-expect-error showPicker non tipizzata dappertutto
+      if (typeof el.showPicker === 'function') el.showPicker()
+      else el.focus()
+    } catch {
+      el.focus()
+    }
+  }
+  const handlers = {
+    onClick: (e: React.MouseEvent<T>) => {
+      e.preventDefault()
+      openPicker()
+    },
+    onPointerDown: (e: React.PointerEvent<T>) => {
+      e.preventDefault()
+      openPicker()
+    },
+    onKeyDown: (e: React.KeyboardEvent<T>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        openPicker()
+      }
+    }
+  }
+  return { ref, handlers }
+}
+
 export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators, selectedDate }: NewShiftModalProps) {
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -66,14 +100,16 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
   const [error, setError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<OperatorConflict[]>([])
   const [showConflicts, setShowConflicts] = useState(false)
-  // UI: ricerca locale per liste
   const [siteQuery, setSiteQuery] = useState('')
   const [opQuery, setOpQuery] = useState('')
 
-  // Reset form quando si apre il modal e carica defaults da settings
+  // DATE: hook per data di inizio
+  const startDatePicker = useClickableDatePicker<HTMLInputElement>()
+  // DATE: hook per data fine ricorrenza
+  const endDatePicker = useClickableDatePicker<HTMLInputElement>()
+
   useEffect(() => {
     if (open) {
-      // Carica defaults da settings
       const loadDefaults = async () => {
         try {
           const settings = await apiService.getSettings()
@@ -95,7 +131,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
           })
         } catch (error) {
           console.error('Errore nel caricamento settings:', error)
-          // Fallback ai defaults hardcoded
           setFormData({
             title: '',
             date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -119,7 +154,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
     }
   }, [open, selectedDate])
 
-  // Controlla conflitti quando cambiano operatori o data
   useEffect(() => {
     if (formData.operatorIds.length > 0 && formData.date) {
       checkConflicts()
@@ -130,8 +164,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
 
   const checkConflicts = async () => {
     try {
-      // I conflitti verranno gestiti direttamente dalla risposta del backend
-      // durante la creazione del turno, quindi resettiamo i conflitti locali
       setConflicts([])
     } catch (error) {
       console.error('Errore nel controllo conflitti:', error)
@@ -156,7 +188,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
       return
     }
 
-    // Mostra warning se ci sono conflitti
     if (conflicts.length > 0 && !showConflicts) {
       setShowConflicts(true)
       return
@@ -176,18 +207,19 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
           frequency: formData.recurrence.frequency,
           interval: formData.recurrence.interval,
           startDate: new Date(formData.date).toISOString(),
-          endDate: formData.recurrence.endType === 'date' ? 
-            new Date(formData.recurrence.endDate!).toISOString() : undefined,
-          count: formData.recurrence.endType === 'count' ? 
-            formData.recurrence.count : undefined
+          endDate: formData.recurrence.endType === 'date' && formData.recurrence.endDate
+            ? new Date(formData.recurrence.endDate).toISOString()
+            : undefined,
+          count: formData.recurrence.endType === 'count'
+            ? formData.recurrence.count
+            : undefined
         } : undefined
       }
 
       const response = await apiService.createShift(shiftData)
       
-      // Gestisci warnings.operatorConflicts[] dalla risposta del backend
       if (response.warnings?.operatorConflicts && response.warnings.operatorConflicts.length > 0) {
-        const backendConflicts: OperatorConflict[] = response.warnings.operatorConflicts.map(conflict => ({
+        const backendConflicts: OperatorConflict[] = response.warnings.operatorConflicts.map((conflict: any) => ({
           operatorId: conflict.operatorId,
           operatorName: conflict.operatorName,
           conflictingShifts: [{
@@ -199,7 +231,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
         
         setConflicts(backendConflicts)
         
-        // Se non abbiamo ancora mostrato i conflitti, mostrali ora
         if (!showConflicts) {
           setShowConflicts(true)
           setLoading(false)
@@ -270,7 +301,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                   <span className="text-sm text-muted-foreground">Crea un nuovo turno assegnando siti e operatori</span>
                 </div>
                 {formData.hasRecurrence && (
-                  <Badge data-light-foreground="true" variant="secondary" className="ml-2">Ricorrente</Badge>
+                  <Badge variant="secondary" className="ml-2">Ricorrente</Badge>
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -307,6 +338,9 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                       value={formData.date}
                       onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                       required
+                      ref={startDatePicker.ref}
+                      {...startDatePicker.handlers}
+                      className="cursor-pointer"
                     />
                   </div>
                 </div>
@@ -323,7 +357,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                 </div>
               </section>
 
-              {/* Ricorrenza */}
               <section className="rounded-xl border p-4 lg:p-5">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -375,7 +408,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             }
                             className="w-20"
                           />
-                          <span className="text-sm text-muted">
+                          <span className="text-sm text-gray-600">
                             {formData.recurrence.frequency === 'daily' ? 'giorni' : 'settimane'}
                           </span>
                         </div>
@@ -394,7 +427,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             onChange={() =>
                               setFormData(prev => ({
                                 ...prev,
-                                recurrence: { ...prev.recurrence, endType: 'never' }
+                                recurrence: { ...prev.recurrence, endType: 'never', count: undefined, endDate: undefined }
                               }))
                             }
                           />
@@ -409,7 +442,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             onChange={() =>
                               setFormData(prev => ({
                                 ...prev,
-                                recurrence: { ...prev.recurrence, endType: 'count' }
+                                recurrence: { ...prev.recurrence, endType: 'count', endDate: undefined }
                               }))
                             }
                           />
@@ -428,7 +461,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             className="w-20"
                             disabled={formData.recurrence.endType !== 'count'}
                           />
-                          <span className="text-sm text-muted">occorrenze</span>
+                          <span className="text-sm text-gray-600">occorrenze</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <input
@@ -439,7 +472,7 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             onChange={() =>
                               setFormData(prev => ({
                                 ...prev,
-                                recurrence: { ...prev.recurrence, endType: 'date' }
+                                recurrence: { ...prev.recurrence, endType: 'date', count: undefined }
                               }))
                             }
                           />
@@ -455,6 +488,9 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                             }
                             disabled={formData.recurrence.endType !== 'date'}
                             min={formData.date}
+                            ref={endDatePicker.ref}
+                            {...endDatePicker.handlers}
+                            className={`cursor-pointer ${formData.recurrence.endType !== 'date' ? 'cursor-not-allowed opacity-60' : ''}`}
                           />
                         </div>
                       </div>
@@ -463,7 +499,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                 )}
               </section>
 
-              {/* Warning conflitti */}
               {conflicts.length > 0 && (
                 <Alert className="border-orange-200 bg-orange-50">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -503,7 +538,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
                 </Alert>
               )}
 
-              {/* Errori */}
               {error && (
                 <Alert className="border-red-200 bg-red-50">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -512,7 +546,6 @@ export function NewShiftModal({ open, onClose, onShiftCreated, sites, operators,
               )}
             </div>
 
-            {/* Colonna destra: Siti e Operatori con ricerca */}
             <div className="space-y-6">
               <section className="rounded-xl border p-4 lg:p-5">
                 <div className="mb-3 flex items-center justify-between gap-3">

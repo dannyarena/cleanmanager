@@ -42,11 +42,25 @@ export interface BadgeProps
 function Badge({ className, variant, ...props }: BadgeProps) {
   // Only treat solid-colored variants as colored (they need white text on top)
   // Light tints (bg-*/10, 100, etc.) should NOT force white text.
+  // Here we also mark certain tint variants to request the light-mode foreground
+  // so they remain readable in light mode. This uses the global CSS rule
+  // `[data-light-foreground="true"]` defined in index.css.
   const solidColoredVariants = new Set(['default', 'destructive'])
-  const isColored = solidColoredVariants.has(variant || 'default')
+  const lightForegroundVariants = new Set(['secondary', 'info', 'success', 'warning', 'admin', 'manager', 'operator'])
 
+  const isColored = solidColoredVariants.has(variant || 'default')
+  const wantsLightForeground = lightForegroundVariants.has(variant || '')
+
+  // data-colored triggers white-on-colored styles; data-light-foreground makes the
+  // element use the normal foreground color in light mode (via :root rule), improving
+  // contrast for tints like bg-secondary in light theme.
   return (
-    <div data-colored={isColored ? 'true' : undefined} className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div
+      data-colored={isColored ? 'true' : undefined}
+      {...(wantsLightForeground ? { 'data-light-foreground': 'true' } : {})}
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
   )
 }
 

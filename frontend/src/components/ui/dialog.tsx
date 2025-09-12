@@ -51,7 +51,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 export function DialogContent({ className, children }: DialogContentProps) {
   return (
     <div className={cn(
-      "bg-card rounded-lg shadow-lg max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-border",
+      "dialog-content bg-card rounded-lg shadow-lg max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-border",
       className
     )}>
       {children}

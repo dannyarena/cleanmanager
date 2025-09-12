@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { LogOut, Settings, Moon, Sun } from 'lucide-react'
+import { LogOut, Moon, Sun } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { authService } from '../../services/auth'
 import { useTheme } from '../../contexts/ThemeContext'
-import { useSettings } from '../../contexts/SettingsContext'
 
 const pageNames: Record<string, string> = {
   '/': 'Dashboard',
@@ -18,9 +17,8 @@ const pageNames: Record<string, string> = {
 export function Topbar() {
   const location = useLocation()
   const user = authService.getUser()
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
-  const { loading } = useSettings()
+  const loading = false
   
   const currentPageName = pageNames[location.pathname] || 'CleanManager'
 
@@ -69,15 +67,7 @@ export function Topbar() {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
             
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              title="Impostazioni"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
+            {/* Settings button removed */}
             
             <Button
               variant="ghost"
@@ -91,14 +81,7 @@ export function Topbar() {
           </div>
         </div>
       </div>
-      {/* Settings dialog */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Impostazioni</DialogTitle>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      {/* Settings dialog removed */}
     </header>
   )
 }

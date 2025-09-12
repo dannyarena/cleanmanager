@@ -342,7 +342,7 @@ function ShiftCard({ shift, onClick }: ShiftCardProps) {
       )}
       
       {shift.recurrence && (
-        <Badge variant="secondary" className="mt-1 text-xs">
+        <Badge data-light-foreground="true" variant="secondary" className="mt-1 text-xs">
           {shift.recurrence.frequency === 'daily' ? 'Giornaliero' : 'Settimanale'}
         </Badge>
       )}

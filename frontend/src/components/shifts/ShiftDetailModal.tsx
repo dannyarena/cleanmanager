@@ -180,12 +180,7 @@ export function ShiftDetailModal({
     })
   }
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  // time is no longer displayed in the details modal
 
   const getRecurrenceDescription = (recurrence: Shift['recurrence']) => {
     if (!recurrence) return null
@@ -233,10 +228,10 @@ export function ShiftDetailModal({
             {/* Informazioni principali */}
             <div className="grid grid-cols-2 gap-6">
               <Card>
-                <CardHeader className="pb-3">
+                  <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Data e Ora
+                    <Calendar className="w-4 h-4" />
+                    Data
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -244,11 +239,8 @@ export function ShiftDetailModal({
                     <div className="text-lg font-semibold text-card-foreground">
                       {formatDate(shift.date)}
                     </div>
-                    <div className="text-sm text-muted">
-                      {formatTime(shift.date)}
-                    </div>
                     {shift.recurrence && (
-                      <Badge variant="secondary" className="mt-2">
+                      <Badge data-light-foreground="true" variant="secondary" className="mt-2">
                         {getRecurrenceDescription(shift.recurrence)}
                       </Badge>
                     )}
@@ -265,11 +257,11 @@ export function ShiftDetailModal({
                 </CardHeader>
                 <CardContent>
                   {shift.notes ? (
-                    <p className="text-sm text-muted whitespace-pre-wrap">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                       {shift.notes}
                     </p>
                   ) : (
-                    <p className="text-sm text-muted italic">
+                    <p className="text-sm text-muted-foreground italic">
                       Nessuna nota aggiunta
                     </p>
                   )}
@@ -296,7 +288,7 @@ export function ShiftDetailModal({
 
               <TabsContent value="sites" className="space-y-4">
                 {shift.sites.length === 0 ? (
-                  <div className="text-center py-8 text-muted">
+                  <div className="text-center py-8 text-muted-foreground">
                     Nessun sito assegnato
                   </div>
                 ) : (
@@ -307,9 +299,9 @@ export function ShiftDetailModal({
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h4 className="font-medium text-card-foreground">{site.name}</h4>
-                              <p className="text-sm text-muted mt-1">{site.address}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{site.address}</p>
                               {site.client && (
-                                <p className="text-xs text-muted mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                   Cliente: {site.client.name}
                                 </p>
                               )}
@@ -334,7 +326,7 @@ export function ShiftDetailModal({
 
               <TabsContent value="operators" className="space-y-4">
                 {shift.operators.length === 0 ? (
-                  <div className="text-center py-8 text-muted">
+                  <div className="text-center py-8 text-muted-foreground">
                     Nessun operatore assegnato
                   </div>
                 ) : (
@@ -351,12 +343,12 @@ export function ShiftDetailModal({
                                 <h4 className="font-medium text-card-foreground">
                                   {operator.firstName} {operator.lastName}
                                 </h4>
-                                <p className="text-sm text-muted">{operator.email}</p>
+                                <p className="text-sm text-muted-foreground">{operator.email}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               {operator.isManager && (
-                                <Badge variant="secondary">Manager</Badge>
+                                <Badge data-light-foreground="true" variant="secondary">Manager</Badge>
                               )}
                               <Badge variant="outline">
                                 {operator.role === 'admin' ? 'Admin' : 'Operatore'}
@@ -391,7 +383,7 @@ export function ShiftDetailModal({
                           </CardHeader>
                           <CardContent>
                             {siteChecklist.length === 0 ? (
-                              <p className="text-sm text-muted italic">
+                              <p className="text-sm text-muted-foreground italic">
                                 Nessuna checklist configurata per questo sito
                               </p>
                             ) : (
@@ -409,7 +401,7 @@ export function ShiftDetailModal({
                                         )}
                                       </div>
                                       {item.description && (
-                                        <p className="text-sm text-muted mt-1">{item.description}</p>
+                                        <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                                       )}
                                     </div>
                                   </div>
@@ -427,11 +419,11 @@ export function ShiftDetailModal({
 
             {/* Conferma eliminazione per turni ricorrenti */}
             {showDeleteConfirm && shift.recurrence && (
-              <Alert className="border-orange-200 bg-orange-50">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   <div className="space-y-4">
-                    <div className="font-medium text-orange-800">
+                    <div className="font-medium">
                       Questo è un turno ricorrente. Cosa vuoi eliminare?
                     </div>
                     <div className="space-y-2">
@@ -443,7 +435,7 @@ export function ShiftDetailModal({
                           checked={deleteAction.type === 'single'}
                           onChange={(e) => setDeleteAction({ ...deleteAction, type: 'single' })}
                         />
-                        <span className="text-sm text-orange-800">
+                        <span className="text-sm">
                           Solo questa occorrenza ({formatDate(shift.date)})
                         </span>
                       </label>
@@ -455,7 +447,7 @@ export function ShiftDetailModal({
                           checked={deleteAction.type === 'this_and_future'}
                           onChange={(e) => setDeleteAction({ ...deleteAction, type: 'this_and_future' })}
                         />
-                        <span className="text-sm text-orange-800">
+                        <span className="text-sm">
                           Da questa occorrenza in poi
                         </span>
                       </label>
@@ -467,7 +459,7 @@ export function ShiftDetailModal({
                           checked={deleteAction.type === 'series'}
                           onChange={(e) => setDeleteAction({ ...deleteAction, type: 'series' })}
                         />
-                        <span className="text-sm text-orange-800">
+                        <span className="text-sm">
                           Tutta la serie ricorrente
                         </span>
                       </label>
@@ -496,9 +488,9 @@ export function ShiftDetailModal({
 
             {/* Errori */}
             {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
                   {error}
                 </AlertDescription>
               </Alert>
