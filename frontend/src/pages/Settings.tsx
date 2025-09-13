@@ -7,7 +7,7 @@ import { Switch } from '../components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Separator } from '../components/ui/separator'
-import { Settings as SettingsIcon, Palette, Calendar, Clock, Bell, Save, Info, Loader2 } from 'lucide-react'
+import { Settings as SettingsIcon, Palette, Calendar, Bell, Save, Info, Loader2 } from 'lucide-react'
 import { useSettings } from '../contexts/SettingsContext'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -166,56 +166,7 @@ export function Settings() {
           </CardContent>
         </Card>
 
-        {/* Sezione Turni */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Turni
-            </CardTitle>
-            <CardDescription>
-              Configura i valori predefiniti per la creazione dei turni
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Frequenza Predefinita</Label>
-                <Select
-                  value={settings.recurrenceDefaultFrequency}
-                  onValueChange={(value: 'daily' | 'weekly') => 
-                    updateSettings({ recurrenceDefaultFrequency: value })
-                  }
-                  disabled={saving}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Giornaliero</SelectItem>
-                    <SelectItem value="weekly">Settimanale</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Intervallo Predefinito</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={settings.recurrenceDefaultInterval}
-                  onChange={(e) => 
-                    updateSettings({ 
-                      recurrenceDefaultInterval: parseInt(e.target.value) || 1 
-                    })
-                  }
-                  disabled={saving}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Turni defaults removed per request */}
 
         {/* Sezione Notifiche */}
         <Card>
