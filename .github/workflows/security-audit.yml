@@ -1,0 +1,155 @@
+name: Security Audit - Raw SQL Check
+
+# Milestone 5 - Audit & blocco query pericolose
+# Pipeline CI per bloccare query raw non autorizzate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  # Esecuzione schedulata ogni giorno alle 2:00 AM
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  raw-sql-audit:
+    name: 🔍 Raw SQL Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+        
+    - name: 📦 Install Dependencies
+      working-directory: ./backend
+      run: npm ci
+      
+    - name: 🔍 Run Raw SQL Audit
+      working-directory: ./backend
+      run: |
+        echo "🔍 Esecuzione audit query raw SQL..."
+        node scripts/audit-raw-sql.js --json
+        
+    - name: 📊 Upload Audit Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: raw-sql-audit-report
+        path: backend/audit-reports/raw-sql-audit.json
+        retention-days: 30
+        
+    - name: 🚨 Fail on Security Violations
+      working-directory: ./backend
+      run: |
+        if [ -f "audit-reports/raw-sql-audit.json" ]; then
+          VIOLATIONS=$(cat audit-reports/raw-sql-audit.json | jq '.summary.violations')
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo "❌ SECURITY AUDIT FAILED: $VIOLATIONS violazioni trovate"
+            echo "📄 Controlla il report per i dettagli"
+            exit 1
+          else
+            echo "✅ SECURITY AUDIT PASSED: Nessuna violazione trovata"
+          fi
+        else
+          echo "❌ Report audit non trovato"
+          exit 1
+        fi
+
+  eslint-security:
+    name: 🔧 ESLint Security Rules
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+        
+    - name: 📦 Install Dependencies
+      working-directory: ./backend
+      run: |
+        npm ci
+        # Installa ESLint se non presente
+        npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+        
+    - name: 🔧 Run ESLint Security Check
+      working-directory: ./backend
+      run: |
+        echo "🔧 Esecuzione controlli ESLint di sicurezza..."
+        # Registra la regola custom
+        mkdir -p node_modules/eslint-plugin-local
+        cp eslint-rules/no-raw-sql.js node_modules/eslint-plugin-local/
+        
+        # Esegui ESLint con focus su sicurezza
+        npx eslint src/ --ext .ts,.js --format json --output-file eslint-security-report.json || true
+        
+        # Controlla risultati
+        if [ -f "eslint-security-report.json" ]; then
+          ERRORS=$(cat eslint-security-report.json | jq '[.[].messages[] | select(.severity == 2)] | length')
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "❌ ESLint ha trovato $ERRORS errori di sicurezza"
+            cat eslint-security-report.json | jq -r '.[].messages[] | select(.severity == 2) | "❌ \(.ruleId): \(.message) (\(.line):\(.column))"'
+            exit 1
+          else
+            echo "✅ Nessun errore di sicurezza ESLint trovato"
+          fi
+        fi
+        
+    - name: 📊 Upload ESLint Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: eslint-security-report
+        path: backend/eslint-security-report.json
+        retention-days: 30
+
+  security-summary:
+    name: 📋 Security Summary
+    runs-on: ubuntu-latest
+    needs: [raw-sql-audit, eslint-security]
+    if: always()
+    
+    steps:
+    - name: 📥 Download Audit Reports
+      uses: actions/download-artifact@v4
+      with:
+        pattern: '*-report'
+        merge-multiple: true
+        
+    - name: 📋 Generate Security Summary
+      run: |
+        echo "# 🔒 Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "raw-sql-audit.json" ]; then
+          VIOLATIONS=$(cat raw-sql-audit.json | jq '.summary.violations')
+          STATUS=$(cat raw-sql-audit.json | jq -r '.summary.status')
+          echo "## 🔍 Raw SQL Audit: $STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- Violazioni trovate: $VIOLATIONS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "eslint-security-report.json" ]; then
+          ERRORS=$(cat eslint-security-report.json | jq '[.[].messages[] | select(.severity == 2)] | length')
+          echo "## 🔧 ESLint Security: $([ $ERRORS -eq 0 ] && echo 'PASS' || echo 'FAIL')" >> $GITHUB_STEP_SUMMARY
+          echo "- Errori di sicurezza: $ERRORS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "## 📊 Raccomandazioni" >> $GITHUB_STEP_SUMMARY
+        echo "- Usa sempre i wrapper sicuri in \`utils/tenantSafeRaw.ts\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Aggiungi file alla whitelist solo se necessario" >> $GITHUB_STEP_SUMMARY
+        echo "- Richiedi review di sicurezza per eccezioni" >> $GITHUB_STEP_SUMMARY

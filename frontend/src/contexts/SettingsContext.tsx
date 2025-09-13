@@ -97,6 +97,27 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     // DOPO — consenti update anche se settings è null (merge con default)
     if (saving || !authService.isAuthenticated()) return
 
+    // Funzione per mappare i valori al formato server
+    const toServerPayload = (partial: Partial<TenantSettings>) => {
+      const out: any = {}
+      if (partial.companyName !== undefined) out.companyName = partial.companyName?.trim()
+      if (partial.primaryColor !== undefined) out.primaryColor = partial.primaryColor
+      if (partial.theme !== undefined) out.theme = partial.theme.toUpperCase() // 'light' -> 'LIGHT'
+      if (partial.workingDays !== undefined) {
+        out.workingDays = Array.from(new Set(partial.workingDays))
+          .filter(n => Number.isInteger(n) && n >= 1 && n <= 7)
+          .sort((a,b)=>a-b)
+      }
+      if (partial.recurrenceDefaultFrequency !== undefined) {
+        out.recurrenceDefaultFrequency = partial.recurrenceDefaultFrequency.toUpperCase() // 'daily' -> 'DAILY'
+      }
+      if (partial.recurrenceDefaultInterval !== undefined) {
+        out.recurrenceDefaultInterval = Math.max(1, Math.floor(partial.recurrenceDefaultInterval))
+      }
+      if (partial.emailEnabled !== undefined) out.emailEnabled = !!partial.emailEnabled
+      return out
+    }
+
     try {
       setSaving(true)
       
@@ -107,8 +128,8 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // UI reattiva anche a freddo
       setSettings(updatedSettings)
       
-      // Salva sul server
-      const updatedData = await apiService.updateSettings(newSettings)
+      // Salva sul server con payload mappato
+      const updatedData = await apiService.updateSettings(toServerPayload(newSettings))
       
       toast.success('Impostazioni salvate con successo')
       // Se il server risponde, riallinea
@@ -120,7 +141,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // Rollback in caso di errore
       const rollbackSettings = settings ?? defaultSettings
       setSettings(rollbackSettings)
-      const errorMessage = err?.response?.data?.error || 'Errore nel salvataggio delle impostazioni'
+      const errorMessage = err?.message || 'Errore nel salvataggio delle impostazioni'
       toast.error(errorMessage)
     } finally {
       setSaving(false)

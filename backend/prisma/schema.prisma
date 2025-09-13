@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,77 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Tabella tenants (aziende)
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relazioni
-  users      User[]
-  clients    Client[]
-  sites      Site[]
-  shifts     Shift[]
-  checklists Checklist[]
-  settings   TenantSettings?
+  id                      String                   @id @default(cuid())
+  name                    String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  slug                    String                   @unique
+  checkItems              CheckItem[]
+  checklists              Checklist[]
+  clients                 Client[]
+  shiftExceptionOperators ShiftExceptionOperator[]
+  shiftExceptionSites     ShiftExceptionSite[]
+  shiftExceptions         ShiftException[]
+  shiftOperators          ShiftOperator[]
+  shiftRecurrences        ShiftRecurrence[]
+  shiftSites              ShiftSite[]
+  shifts                  Shift[]
+  sites                   Site[]
+  settings                TenantSettings?
+  users                   User[]
 
   @@map("tenants")
 }
 
-// Tabella tenant_settings (impostazioni per tenant)
 model TenantSettings {
-  id                           String              @id @default(cuid())
-  tenantId                     String              @unique
-  companyName                  String
-  primaryColor                 String?             @default("#2563eb")
-  theme                        Theme               @default(LIGHT)
-  workingDays                  Int[]               @default([1, 2, 3, 4, 5, 6])
-  recurrenceDefaultFrequency   RecurrenceFrequency @default(WEEKLY)
-  recurrenceDefaultInterval    Int                 @default(1)
-  emailEnabled                 Boolean             @default(false)
-  createdAt                    DateTime            @default(now())
-  updatedAt                    DateTime            @updatedAt
-
-  // Relazioni
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                         String              @id @default(cuid())
+  tenantId                   String              @unique
+  companyName                String
+  primaryColor               String?             @default("#2563eb")
+  theme                      Theme               @default(LIGHT)
+  workingDays                Int[]               @default([1, 2, 3, 4, 5, 6])
+  recurrenceDefaultFrequency RecurrenceFrequency @default(WEEKLY)
+  recurrenceDefaultInterval  Int                 @default(1)
+  emailEnabled               Boolean             @default(false)
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  tenant                     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_settings")
 }
 
-enum Theme {
-  LIGHT
-  DARK
-}
-
-// Tabella users (utenti con ruoli)
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  password   String
-  firstName  String
-  lastName   String
-  role       UserRole
-  isManager  Boolean  @default(false)
-  tenantId   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relazioni
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shiftOperators ShiftOperator[]
+  id                 String                   @id @default(cuid())
+  email              String
+  password           String
+  firstName          String
+  lastName           String
+  role               UserRole
+  isManager          Boolean                  @default(false)
+  tenantId           String
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
   exceptionOperators ShiftExceptionOperator[]
+  shiftOperators     ShiftOperator[]
+  tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, email])
+  @@index([tenantId])
   @@map("users")
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  OPERATORE
-}
-
-// Tabella clients (anagrafiche clienti)
 model Client {
   id        String   @id @default(cuid())
   name      String
@@ -90,58 +76,51 @@ model Client {
   tenantId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sites     Site[]
 
-  // Relazioni
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sites  Site[]
-
+  @@unique([tenantId, name])
   @@map("clients")
 }
 
-// Tabella sites (sedi legate ai clienti)
 model Site {
-  id        String   @id @default(cuid())
-  name      String
-  address   String
-  clientId  String
-  tenantId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relazioni
-  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shiftSites ShiftSite[]
-  checklists Checklist[]
+  id             String               @id @default(cuid())
+  name           String
+  address        String
+  clientId       String
+  tenantId       String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  checklists     Checklist[]
   exceptionSites ShiftExceptionSite[]
+  shiftSites     ShiftSite[]
+  client         Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("sites")
 }
 
-// Tabella shifts (turni)
 model Shift {
-  id        String    @id @default(cuid())
-  title     String
-  date      DateTime
-  notes     String?
-  tenantId  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String           @id @default(cuid())
+  title           String
+  date            DateTime
+  notes           String?
+  tenantId        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  shiftExceptions ShiftException[]
+  shiftOperators  ShiftOperator[]
+  shiftRecurrence ShiftRecurrence?
+  shiftSites      ShiftSite[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relazioni
-  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shiftSites       ShiftSite[]
-  shiftOperators   ShiftOperator[]
-  shiftRecurrence  ShiftRecurrence?
-  shiftExceptions  ShiftException[]
-
-  // Indici per performance
   @@index([tenantId, date])
   @@index([tenantId, createdAt])
   @@map("shifts")
 }
 
-// Tabella shift_recurrence (ricorrenze dei turni)
 model ShiftRecurrence {
   id        String              @id @default(cuid())
   shiftId   String              @unique
@@ -152,129 +131,139 @@ model ShiftRecurrence {
   count     Int?
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
+  tenantId  String
+  shift     Shift               @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relazioni
-  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-
+  @@index([tenantId])
   @@map("shift_recurrence")
 }
 
-enum RecurrenceFrequency {
-  DAILY
-  WEEKLY
-}
-
-// Tabella shift_sites (N:N tra turni e siti)
 model ShiftSite {
-  id      String @id @default(cuid())
-  shiftId String
-  siteId  String
-
-  // Relazioni
-  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  site  Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  shiftId  String
+  siteId   String
+  tenantId String
+  shift    Shift  @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  site     Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([shiftId, siteId])
+  @@index([tenantId])
   @@map("shift_sites")
 }
 
-// Tabella shift_operators (N:N tra turni e operatori)
 model ShiftOperator {
   id       String @id @default(cuid())
   shiftId  String
   userId   String
-
-  // Relazioni
-  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId String
+  shift    Shift  @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([shiftId, userId])
+  @@index([tenantId])
   @@map("shift_operators")
 }
 
-// Tabella checklists (template per sito)
 model Checklist {
-  id        String   @id @default(cuid())
-  title     String
-  siteId    String
-  tenantId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relazioni
+  id         String      @id @default(cuid())
+  title      String
+  siteId     String
+  tenantId   String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  checkItems CheckItem[]
   site       Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  checkItems CheckItem[]
 
+  @@index([tenantId])
   @@map("checklists")
 }
 
-// Tabella check_items (voci della checklist)
 model CheckItem {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
-  order       Int      @default(0)
+  order       Int       @default(0)
   checklistId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenantId    String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relazioni
-  checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-
+  @@index([tenantId])
   @@map("check_items")
 }
 
-// Tabella shift_exceptions (eccezioni/override per ricorrenze)
 model ShiftException {
-  id           String            @id @default(cuid())
-  shiftId      String
-  date         DateTime
-  exceptionType ExceptionType
-  newTitle     String?
-  newNotes     String?
-  newDate      DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
-  // Relazioni
-  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  exceptionSites ShiftExceptionSite[]
+  id                 String                   @id @default(cuid())
+  shiftId            String
+  date               DateTime
+  exceptionType      ExceptionType
+  newTitle           String?
+  newNotes           String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  newDate            DateTime?
+  tenantId           String
   exceptionOperators ShiftExceptionOperator[]
+  exceptionSites     ShiftExceptionSite[]
+  shift              Shift                    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([shiftId, date])
-  @@index([date]) // Per query veloci su occorrenze spostate
+  @@index([date])
+  @@index([tenantId])
   @@map("shift_exceptions")
 }
 
-// Tabella shift_exception_sites (siti specifici per eccezioni)
 model ShiftExceptionSite {
   id               String         @id @default(cuid())
   shiftExceptionId String
   siteId           String
   createdAt        DateTime       @default(now())
-
-  // Relazioni
-  shiftException ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
-  site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tenantId         String
+  shiftException   ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
+  site             Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([shiftExceptionId, siteId])
+  @@index([tenantId])
   @@map("shift_exception_sites")
 }
 
-// Tabella shift_exception_operators (operatori specifici per eccezioni)
 model ShiftExceptionOperator {
   id               String         @id @default(cuid())
   shiftExceptionId String
   userId           String
   createdAt        DateTime       @default(now())
-
-  // Relazioni
-  shiftException ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId         String
+  shiftException   ShiftException @relation(fields: [shiftExceptionId], references: [id], onDelete: Cascade)
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([shiftExceptionId, userId])
+  @@index([tenantId])
   @@map("shift_exception_operators")
+}
+
+enum Theme {
+  LIGHT
+  DARK
+}
+
+enum UserRole {
+  ADMIN
+  OPERATORE
+  MANAGER
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
 }
 
 enum ExceptionType {

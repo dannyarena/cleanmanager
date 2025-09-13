@@ -10,6 +10,7 @@ import { Separator } from '../components/ui/separator'
 import { Settings as SettingsIcon, Palette, Calendar, Bell, Save, Info, Loader2 } from 'lucide-react'
 import { useSettings } from '../contexts/SettingsContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { authService } from '../services/auth'
 
 const DAYS_OF_WEEK = [
   { value: 1, label: 'Lun' },
@@ -26,6 +27,10 @@ const PRESET_COLORS = ['#2563EB','#7C3AED','#059669','#EA580C','#DC2626','#0EA5E
 export function Settings() {
   const { settings, loading, saving, updateSettings } = useSettings()
   const { setTheme, setPrimaryColor } = useTheme()
+  
+  // Controllo permessi
+  const user = authService.getUser()
+  const canEdit = user?.role === 'admin' || user?.role === 'manager' || (user?.role === 'operatore' && user?.isManager)
 
   if (loading) {
     return (
@@ -68,6 +73,12 @@ export function Settings() {
         )}
       </div>
 
+      {!canEdit && (
+        <Alert className="mb-4">
+          <AlertDescription>Solo Admin o Manager possono modificare le impostazioni.</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-6">
         {/* Sezione Branding & UI */}
         <Card>
@@ -88,7 +99,7 @@ export function Settings() {
                 value={settings.companyName}
                 onChange={(e) => updateSettings({ companyName: e.target.value })}
                 placeholder="Inserisci il nome dell'azienda"
-                disabled={saving}
+                disabled={saving || !canEdit}
               />
             </div>
 
@@ -105,7 +116,7 @@ export function Settings() {
                     }`}
                     style={{ backgroundColor: c }}
                     type="button"
-                    disabled={saving}
+                    disabled={saving || !canEdit}
                   />
                 ))}
               </div>
@@ -116,7 +127,7 @@ export function Settings() {
               <Select
                 value={settings.theme}
                 onValueChange={(value: 'light' | 'dark') => setTheme(value)}
-                disabled={loading || saving}
+                disabled={loading || saving || !canEdit}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -151,7 +162,7 @@ export function Settings() {
                     <Switch
                       checked={settings.workingDays.includes(day.value)}
                       onCheckedChange={() => toggleWorkingDay(day.value)}
-                      disabled={saving}
+                      disabled={saving || !canEdit}
                     />
                   </div>
                 ))}

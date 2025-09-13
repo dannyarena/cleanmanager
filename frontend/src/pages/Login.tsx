@@ -11,7 +11,8 @@ export function Login() {
   const location = useLocation()
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
-    password: ''
+    password: '',
+    tenantSlug: ''
   })
   const [errors, setErrors] = useState<Partial<LoginRequest>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -36,6 +37,10 @@ export function Login() {
       newErrors.password = 'Password richiesta'
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password deve essere di almeno 6 caratteri'
+    }
+
+    if (!formData.tenantSlug) {
+      newErrors.tenantSlug = 'Tenant slug richiesto'
     }
 
     setErrors(newErrors)
@@ -126,6 +131,23 @@ export function Login() {
                 )}
               </div>
 
+              {/* Tenant Slug */}
+              <div className="space-y-2">
+                <Label htmlFor="tenantSlug">Azienda (Tenant)</Label>
+                <Input
+                  id="tenantSlug"
+                  name="tenantSlug"
+                  type="text"
+                  value={formData.tenantSlug}
+                  onChange={handleChange}
+                  placeholder="cleanmanager-demo"
+                  className={errors.tenantSlug ? 'border-red-500' : ''}
+                />
+                {errors.tenantSlug && (
+                  <p className="text-sm text-red-600">{errors.tenantSlug}</p>
+                )}
+              </div>
+
               {/* Login error */}
               {loginError && (
                 <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
@@ -150,6 +172,7 @@ export function Login() {
           <CardContent className="pt-6">
             <h3 className="text-sm font-medium text-primary mb-2">Credenziali demo:</h3>
             <div className="text-sm text-primary/90 space-y-1">
+              <p><strong>Tenant:</strong> cleanmanager-demo</p>
               <p><strong>Admin:</strong> admin@cleanmanager.demo / password123</p>
               <p><strong>Manager:</strong> manager@cleanmanager.demo / password123</p>
               <p><strong>Operatore:</strong> operatore@cleanmanager.demo / password123</p>

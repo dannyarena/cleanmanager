@@ -304,9 +304,22 @@ export const updateSite: RequestHandler = async (req: Request, res: Response) =>
     if (address !== undefined) updateData.address = address.trim();
     if (clientId !== undefined) updateData.clientId = clientId;
 
-    const site = await prisma.site.update({
-      where: { id },
-      data: updateData,
+    // Aggiorna il sito con controllo tenantId
+    const updatedSite = await prisma.site.updateMany({
+      where: { 
+        id,
+        tenantId 
+      },
+      data: updateData
+    });
+
+    if (updatedSite.count === 0) {
+      return res.status(404).json({ error: "Sito non trovato o non autorizzato" });
+    }
+
+    // Recupera il sito aggiornato
+    const site = await prisma.site.findFirst({
+      where: { id, tenantId },
       include: {
         client: true,
         checklists: {
@@ -380,12 +393,28 @@ export const deleteSite: RequestHandler = async (req: Request, res: Response) =>
       });
     }
 
-    // Elimina il sito (le checklist verranno eliminate automaticamente per CASCADE)
-    await prisma.site.delete({
-      where: { id }
+    // Elimina il sito con controllo tenantId (le checklist verranno eliminate automaticamente per CASCADE)
+    const deletedSite = await prisma.site.deleteMany({
+      where: { 
+        id,
+        tenantId 
+      }
     });
 
-    return res.status(204).send();
+    if (deletedSite.count === 0) {
+      return res.status(404).json({ error: "Sito non trovato o non autorizzato" });
+    }
+
+    // Restituisce l'oggetto eliminato per coerenza
+    return res.json({
+      id: existingSite.id,
+      name: existingSite.name,
+      address: existingSite.address,
+      clientId: existingSite.clientId,
+      tenantId: existingSite.tenantId,
+      createdAt: existingSite.createdAt,
+      updatedAt: existingSite.updatedAt
+    });
   } catch (error) {
     console.error('Errore nell\'eliminazione sito:', error);
     return res.status(500).json({ error: "Errore interno del server" });
@@ -557,7 +586,8 @@ export const updateSiteChecklist: RequestHandler = async (req: Request, res: Res
             title: item.title,
             description: item.description || null,
             order: item.order !== undefined ? item.order : i,
-            checklistId: checklist.id
+            checklistId: checklist.id,
+            tenantId
           }
         });
         createdItems.push(createdItem);

@@ -232,9 +232,22 @@ export const updateClient: RequestHandler = async (req: Request, res: Response) 
     if (phone !== undefined) updateData.phone = phone?.trim() || null;
     if (address !== undefined) updateData.address = address?.trim() || null;
 
-    const client = await prisma.client.update({
-      where: { id },
-      data: updateData,
+    // Aggiorna il cliente con controllo tenantId
+    const updatedClient = await prisma.client.updateMany({
+      where: { 
+        id,
+        tenantId 
+      },
+      data: updateData
+    });
+
+    if (updatedClient.count === 0) {
+      return res.status(404).json({ error: "Cliente non trovato o non autorizzato" });
+    }
+
+    // Recupera il cliente aggiornato
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
       include: {
         sites: {
           orderBy: { name: 'asc' }
@@ -301,11 +314,29 @@ export const deleteClient: RequestHandler = async (req: Request, res: Response) 
       });
     }
 
-    await prisma.client.delete({
-      where: { id }
+    // Elimina il cliente con controllo tenantId
+    const deletedClient = await prisma.client.deleteMany({
+      where: { 
+        id,
+        tenantId 
+      }
     });
 
-    return res.status(204).send();
+    if (deletedClient.count === 0) {
+      return res.status(404).json({ error: "Cliente non trovato o non autorizzato" });
+    }
+
+    // Restituisce l'oggetto eliminato per coerenza
+    return res.json({
+      id: existingClient.id,
+      name: existingClient.name,
+      email: existingClient.email,
+      phone: existingClient.phone,
+      address: existingClient.address,
+      tenantId: existingClient.tenantId,
+      createdAt: existingClient.createdAt,
+      updatedAt: existingClient.updatedAt
+    });
   } catch (error) {
     console.error('Errore nell\'eliminazione cliente:', error);
     return res.status(500).json({ error: "Errore interno del server" });

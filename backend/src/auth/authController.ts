@@ -1,24 +1,41 @@
 import { Request, Response, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
 import { JWTPayloadUser, PrismaRoleMap } from "./auth.types";
 import { getUser } from "./authContext";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export const login: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, tenantSlug } = req.body;
+    const tenantSlugFromHeader = req.headers['x-tenant-slug'] as string;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email e password sono richiesti" });
     }
 
-    // Trova l'utente per email
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Ottieni il tenant hint dal body o dall'header
+    const targetTenantSlug = tenantSlug || tenantSlugFromHeader;
+    if (!targetTenantSlug) {
+      return res.status(400).json({ error: "Tenant slug è richiesto (nel body o header x-tenant-slug)" });
+    }
+
+    // Trova il tenant per slug
+    const tenant = await prisma.tenant.findFirst({
+      where: { slug: targetTenantSlug }
+    });
+
+    if (!tenant) {
+      return res.status(401).json({ error: "Tenant non trovato" });
+    }
+
+    // Trova l'utente per email nel tenant specifico
+    const user = await prisma.user.findFirst({
+      where: { 
+        tenantId: tenant.id,
+        email 
+      },
       include: { tenant: true }
     });
 

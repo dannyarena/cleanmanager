@@ -262,9 +262,9 @@ export const createOperator: RequestHandler = async (req: Request, res: Response
       return res.status(400).json({ error: "Email, nome, cognome, password e ruolo sono obbligatori" });
     }
     
-    // Verifica che l'email non sia già in uso
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    // Verifica che l'email non sia già in uso nel tenant
+    const existingUser = await prisma.user.findFirst({
+      where: { email, tenantId }
     });
     
     if (existingUser) {
@@ -355,10 +355,10 @@ export const updateOperator: RequestHandler = async (req: Request, res: Response
       return res.status(404).json({ error: "Operatore non trovato" });
     }
     
-    // Se viene cambiata l'email, verifica che non sia già in uso
+    // Se viene cambiata l'email, verifica che non sia già in uso nel tenant
     if (email && email !== existingOperator.email) {
-      const emailInUse = await prisma.user.findUnique({
-        where: { email }
+      const emailInUse = await prisma.user.findFirst({
+        where: { email, tenantId }
       });
       
       if (emailInUse) {
@@ -381,9 +381,24 @@ export const updateOperator: RequestHandler = async (req: Request, res: Response
     }
     
     // Aggiorna l'operatore
-    const updatedOperator = await prisma.user.update({
-      where: { id },
-      data: updateData,
+    const updatedOperator = await prisma.user.updateMany({
+      where: {
+        id,
+        tenantId
+      },
+      data: updateData
+    });
+
+    if (updatedOperator.count === 0) {
+      return res.status(404).json({ error: "Operatore non trovato" });
+    }
+
+    // Recupera l'operatore aggiornato
+    const operator = await prisma.user.findFirst({
+      where: {
+        id,
+        tenantId
+      },
       select: {
         id: true,
         email: true,
@@ -395,17 +410,21 @@ export const updateOperator: RequestHandler = async (req: Request, res: Response
         updatedAt: true
       }
     });
+
+    if (!operator) {
+      return res.status(404).json({ error: "Operatore non trovato" });
+    }
     
     // Mappa il risultato al formato di risposta
     const mappedOperator: OperatorResponse = {
-      id: updatedOperator.id,
-      email: updatedOperator.email,
-      firstName: updatedOperator.firstName,
-      lastName: updatedOperator.lastName,
-      role: updatedOperator.role.toLowerCase(),
-      isManager: updatedOperator.isManager,
-      createdAt: updatedOperator.createdAt,
-      updatedAt: updatedOperator.updatedAt
+      id: operator.id,
+      email: operator.email,
+      firstName: operator.firstName,
+      lastName: operator.lastName,
+      role: operator.role.toLowerCase(),
+      isManager: operator.isManager,
+      createdAt: operator.createdAt,
+      updatedAt: operator.updatedAt
     };
     
     return res.json(mappedOperator);
@@ -466,11 +485,29 @@ export const deleteOperator: RequestHandler = async (req: Request, res: Response
     }
     
     // Elimina l'operatore
-    await prisma.user.delete({
-      where: { id }
+    const deleteResult = await prisma.user.deleteMany({
+      where: {
+        id,
+        tenantId
+      }
     });
-    
-    return res.status(204).send();
+
+    if (deleteResult.count === 0) {
+      return res.status(404).json({ error: "Operatore non trovato" });
+    }
+
+    // Restituisce l'oggetto eliminato per coerenza
+    return res.json({
+      id: existingOperator.id,
+      email: existingOperator.email,
+      firstName: existingOperator.firstName,
+      lastName: existingOperator.lastName,
+      role: existingOperator.role,
+      isManager: existingOperator.isManager,
+      tenantId: existingOperator.tenantId,
+      createdAt: existingOperator.createdAt,
+      updatedAt: existingOperator.updatedAt
+    });
   } catch (error) {
     console.error('Errore nell\'eliminazione operatore:', error);
     return res.status(500).json({ error: "Errore interno del server" });

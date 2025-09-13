@@ -16,6 +16,7 @@ import {
 import { RecurrenceService, ShiftException } from "../services/recurrenceService";
 import { RecurrenceFrequency, ExceptionType } from "@prisma/client";
 import { parseOccurrenceId, createOccurrenceId, isOccurrenceId } from "../lib/occurrenceHelper";
+import { TenantValidationService } from "../services/tenantValidationService";
 
 /**
  * GET /shifts - Lista turni con generazione lazy delle ricorrenze
@@ -425,22 +426,34 @@ export const createShift: RequestHandler = async (req: Request, res: Response) =
         });
       }
       
-      // Assegna siti
+      // Assegna siti con validazione same-tenant
       if (siteIds.length > 0) {
+        // Valida che tutti i siti appartengano allo stesso tenant
+        await TenantValidationService.validateSameTenant(tenantId, 
+          siteIds.map(siteId => ({ model: 'Site' as const, id: siteId }))
+        );
+        
         await tx.shiftSite.createMany({
           data: siteIds.map(siteId => ({
             shiftId: shift.id,
-            siteId: siteId
+            siteId: siteId,
+            tenantId
           }))
         });
       }
       
-      // Assegna operatori
+      // Assegna operatori con validazione same-tenant
       if (operatorIds.length > 0) {
+        // Valida che tutti gli operatori appartengano allo stesso tenant
+        await TenantValidationService.validateSameTenant(tenantId, 
+          operatorIds.map(operatorId => ({ model: 'User' as const, id: operatorId }))
+        );
+        
         await tx.shiftOperator.createMany({
           data: operatorIds.map(operatorId => ({
             shiftId: shift.id,
-            userId: operatorId
+            userId: operatorId,
+            tenantId
           }))
         });
       }
@@ -535,7 +548,8 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
           newNotes?.trim(),
           newDate,
           siteIds,
-          operatorIds
+          operatorIds,
+          tenantId
         );
         
         // Recupera turno aggiornato con le modifiche dell'eccezione
@@ -605,15 +619,21 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         if (siteIds !== undefined) {
           // Rimuovi tutte le assegnazioni esistenti
           await tx.shiftSite.deleteMany({
-            where: { shiftId: shift.id }
+            where: { shiftId: shift.id, tenantId }
           });
           
-          // Aggiungi le nuove assegnazioni
+          // Aggiungi le nuove assegnazioni con validazione same-tenant
           if (siteIds.length > 0) {
+            // Valida che tutti i siti appartengano allo stesso tenant
+            await TenantValidationService.validateSameTenant(tenantId, 
+              siteIds.map(siteId => ({ model: 'Site' as const, id: siteId }))
+            );
+            
             await tx.shiftSite.createMany({
               data: siteIds.map(siteId => ({
                 shiftId: shift.id,
-                siteId: siteId
+                siteId: siteId,
+                tenantId
               }))
             });
           }
@@ -623,15 +643,21 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         if (operatorIds !== undefined) {
           // Rimuovi tutte le assegnazioni esistenti
           await tx.shiftOperator.deleteMany({
-            where: { shiftId: shift.id }
+            where: { shiftId: shift.id, tenantId }
           });
           
-          // Aggiungi le nuove assegnazioni
+          // Aggiungi le nuove assegnazioni con validazione same-tenant
           if (operatorIds.length > 0) {
+            // Valida che tutti gli operatori appartengano allo stesso tenant
+            await TenantValidationService.validateSameTenant(tenantId, 
+              operatorIds.map(operatorId => ({ model: 'User' as const, id: operatorId }))
+            );
+            
             await tx.shiftOperator.createMany({
               data: operatorIds.map(operatorId => ({
                 shiftId: shift.id,
-                userId: operatorId
+                userId: operatorId,
+                tenantId
               }))
             });
           }
@@ -639,10 +665,16 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         
         // Aggiorna la ricorrenza se presente
         if (shift.shiftRecurrence && Object.keys(recurrenceUpdateData).length > 0) {
-          await tx.shiftRecurrence.update({
-            where: { id: shift.shiftRecurrence.id },
+          const updatedRecurrence = await tx.shiftRecurrence.updateMany({
+            where: { 
+              id: shift.shiftRecurrence.id,
+              shift: { tenantId }
+            },
             data: recurrenceUpdateData
           });
+          if (updatedRecurrence.count === 0) {
+            throw new Error("Ricorrenza non trovata o non autorizzata");
+          }
         }
       });
       
@@ -681,12 +713,21 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         // 1) Tronca la serie originale (NON toccare startDate!)
         // Se endForOriginal < startDate, la serie originale si azzera: in quel caso eliminala
         if (endForOriginal < shift.shiftRecurrence!.startDate) {
-          await tx.shift.delete({ where: { id: shift.id } });
+          const deletedShift = await tx.shift.deleteMany({ where: { id: shift.id, tenantId } });
+          if (deletedShift.count === 0) {
+            throw new Error("Turno non trovato o non autorizzato");
+          }
         } else {
-          await tx.shiftRecurrence.update({
-            where: { id: shift.shiftRecurrence!.id },
+          const updatedRecurrence = await tx.shiftRecurrence.updateMany({
+            where: { 
+              id: shift.shiftRecurrence!.id,
+              shift: { tenantId }
+            },
             data: { endDate: endForOriginal }
           });
+          if (updatedRecurrence.count === 0) {
+            throw new Error("Ricorrenza non trovata o non autorizzata");
+          }
           // Mantieni eccezioni < pivot
           await tx.shiftException.deleteMany({
             where: { shiftId: shift.id, date: { gte: pivot } }
@@ -716,15 +757,25 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         // Assegna siti/operatori aggiornati (se forniti), altrimenti ereditati dal master
         const sitesToAssign = siteIds !== undefined ? siteIds : shift.shiftSites.map(ss => ss.siteId);
         if (sitesToAssign.length > 0) {
+          // Valida che tutti i siti appartengano allo stesso tenant
+          await TenantValidationService.validateSameTenant(tenantId, 
+            sitesToAssign.map(siteId => ({ model: 'Site' as const, id: siteId }))
+          );
+          
           await tx.shiftSite.createMany({
-            data: sitesToAssign.map(siteId => ({ shiftId: newShift.id, siteId }))
+            data: sitesToAssign.map(siteId => ({ shiftId: newShift.id, siteId, tenantId }))
           });
         }
         
         const operatorsToAssign = operatorIds !== undefined ? operatorIds : shift.shiftOperators.map(so => so.userId);
         if (operatorsToAssign.length > 0) {
+          // Valida che tutti gli operatori appartengano allo stesso tenant
+          await TenantValidationService.validateSameTenant(tenantId, 
+            operatorsToAssign.map(userId => ({ model: 'User' as const, id: userId }))
+          );
+          
           await tx.shiftOperator.createMany({
-            data: operatorsToAssign.map(userId => ({ shiftId: newShift.id, userId }))
+            data: operatorsToAssign.map(userId => ({ shiftId: newShift.id, userId, tenantId }))
           });
         }
         
@@ -741,7 +792,8 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
               exceptionType: ex.exceptionType,
               newTitle: ex.newTitle,
               newNotes: ex.newNotes,
-              newDate: ex.newDate
+              newDate: ex.newDate,
+              tenantId
             }))
           });
         }
@@ -784,15 +836,21 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         if (siteIds !== undefined) {
           // Rimuovi tutte le assegnazioni esistenti
           await tx.shiftSite.deleteMany({
-            where: { shiftId: id }
+            where: { shiftId: id, tenantId }
           });
           
-          // Aggiungi le nuove assegnazioni
+          // Aggiungi le nuove assegnazioni con validazione same-tenant
           if (siteIds.length > 0) {
+            // Valida che tutti i siti appartengano allo stesso tenant
+            await TenantValidationService.validateSameTenant(tenantId, 
+              siteIds.map(siteId => ({ model: 'Site' as const, id: siteId }))
+            );
+            
             await tx.shiftSite.createMany({
               data: siteIds.map(siteId => ({
                 shiftId: id,
-                siteId: siteId
+                siteId: siteId,
+                tenantId
               }))
             });
           }
@@ -802,15 +860,21 @@ export const updateShift: RequestHandler = async (req: Request, res: Response) =
         if (operatorIds !== undefined) {
           // Rimuovi tutte le assegnazioni esistenti
           await tx.shiftOperator.deleteMany({
-            where: { shiftId: id }
+            where: { shiftId: id, tenantId }
           });
           
-          // Aggiungi le nuove assegnazioni
+          // Aggiungi le nuove assegnazioni con validazione same-tenant
           if (operatorIds.length > 0) {
+            // Valida che tutti gli operatori appartengano allo stesso tenant
+            await TenantValidationService.validateSameTenant(tenantId, 
+              operatorIds.map(operatorId => ({ model: 'User' as const, id: operatorId }))
+            );
+            
             await tx.shiftOperator.createMany({
               data: operatorIds.map(operatorId => ({
                 shiftId: id,
-                userId: operatorId
+                userId: operatorId,
+                tenantId
               }))
             });
           }
@@ -882,7 +946,7 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       }
 
       if (deleteType === 'single') {
-        await createShiftException(masterId, targetDate, ExceptionType.CANCELLED);
+        await createShiftException(masterId, targetDate, ExceptionType.CANCELLED, undefined, undefined, undefined, undefined, undefined, tenantId);
         return res.json({ result: 'occurrence_cancelled' });
       }
 
@@ -892,15 +956,24 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
         endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
 
         if (endDateForOriginal < masterShift.shiftRecurrence.startDate) {
-          await prisma.shift.delete({ where: { id: masterId } });
+          const deletedShift = await prisma.shift.deleteMany({ where: { id: masterId, tenantId } });
+          if (deletedShift.count === 0) {
+            return res.status(404).json({ error: "Turno non trovato o non autorizzato" });
+          }
           return res.json({ result: 'series_deleted', message: "Serie eliminata completamente (nessuna occorrenza rimanente)" });
         }
 
         await prisma.$transaction(async (tx) => {
-          await tx.shiftRecurrence.update({
-            where: { id: masterShift.shiftRecurrence!.id },
+          const updatedRecurrence = await tx.shiftRecurrence.updateMany({
+            where: { 
+              id: masterShift.shiftRecurrence!.id,
+              shift: { tenantId }
+            },
             data: { endDate: endDateForOriginal }
           });
+          if (updatedRecurrence.count === 0) {
+            throw new Error("Ricorrenza non trovata o non autorizzata");
+          }
           await tx.shiftException.deleteMany({
             where: { shiftId: masterId, date: { gte: pivotDate } }
           });
@@ -910,7 +983,10 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       }
 
       if (deleteType === 'series') {
-        await prisma.shift.delete({ where: { id: masterId } });
+        const deletedShift = await prisma.shift.deleteMany({ where: { id: masterId, tenantId } });
+        if (deletedShift.count === 0) {
+          return res.status(404).json({ error: "Turno non trovato o non autorizzato" });
+        }
         return res.json({ result: 'series_deleted' });
       }
 
@@ -942,11 +1018,14 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
         const valid = await isValidRecurrenceOccurrence(shift.id, occurrenceDate, tenantId);
         if (!valid) return res.status(400).json({ error: "Data non valida per questa ricorrenza" });
 
-        await createShiftException(shift.id, occurrenceDate, ExceptionType.CANCELLED);
+        await createShiftException(shift.id, occurrenceDate, ExceptionType.CANCELLED, undefined, undefined, undefined, undefined, undefined, tenantId);
         return res.json({ result: 'occurrence_cancelled' });
       }
 
-      await prisma.shift.delete({ where: { id } });
+      const deletedShift = await prisma.shift.deleteMany({ where: { id, tenantId } });
+      if (deletedShift.count === 0) {
+        return res.status(404).json({ error: "Turno non trovato o non autorizzato" });
+      }
       return res.json({ result: 'single_deleted' });
     }
     
@@ -957,7 +1036,10 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       }
       
       // Elimina tutto (cascade eliminerà N:N, recurrence, eccezioni)
-      await prisma.shift.delete({ where: { id } });
+      const deletedShift = await prisma.shift.deleteMany({ where: { id, tenantId } });
+      if (deletedShift.count === 0) {
+        return res.status(404).json({ error: "Turno non trovato o non autorizzato" });
+      }
       
       return res.json({ 
         result: 'series_deleted',
@@ -976,12 +1058,24 @@ export const deleteShift: RequestHandler = async (req: Request, res: Response) =
       endDateForOriginal.setDate(endDateForOriginal.getDate() - 1);
 
       if (endDateForOriginal < shift.shiftRecurrence.startDate) {
-        await prisma.shift.delete({ where: { id } });
+        const deletedShift = await prisma.shift.deleteMany({ where: { id, tenantId } });
+        if (deletedShift.count === 0) {
+          return res.status(404).json({ error: "Turno non trovato o non autorizzato" });
+        }
         return res.json({ result: 'series_deleted', message: "Serie eliminata completamente (nessuna occorrenza rimanente)" });
       }
 
       await prisma.$transaction(async (tx) => {
-        await tx.shiftRecurrence.update({ where: { id: shift.shiftRecurrence!.id }, data: { endDate: endDateForOriginal } });
+        const updatedRecurrence = await tx.shiftRecurrence.updateMany({ 
+          where: { 
+            id: shift.shiftRecurrence!.id,
+            shift: { tenantId }
+          }, 
+          data: { endDate: endDateForOriginal } 
+        });
+        if (updatedRecurrence.count === 0) {
+          throw new Error("Ricorrenza non trovata o non autorizzata");
+        }
         await tx.shiftException.deleteMany({ where: { shiftId: id, date: { gte: pivotDate } } });
       });
 
@@ -1029,22 +1123,29 @@ export const assignSites: RequestHandler = async (req: Request, res: Response) =
       return res.status(404).json({ error: "Turno non trovato" });
     }
     
-    // Sostituisci assegnazioni esistenti
+    // Sostituisci assegnazioni esistenti con validazione same-tenant
     await prisma.$transaction(async (tx) => {
       // Rimuovi assegnazioni esistenti
       await tx.shiftSite.deleteMany({
-        where: { shiftId: id }
+        where: { shiftId: id, tenantId }
       });
       
-      // Crea nuove assegnazioni
+      // Crea nuove assegnazioni con validazione
       if (siteIds.length > 0) {
         if (!id) {
           throw new Error('ID turno richiesto per assegnare siti');
         }
+        
+        // Valida che tutti i siti appartengano allo stesso tenant
+        const validations = siteIds.map(siteId => ({ model: 'Site', id: siteId }));
+        validations.push({ model: 'Shift', id });
+        await TenantValidationService.validateSameTenant(tenantId, validations);
+        
         await tx.shiftSite.createMany({
           data: siteIds.map(siteId => ({
             shiftId: id,
-            siteId: siteId
+            siteId: siteId,
+            tenantId
           }))
         });
       }
@@ -1144,22 +1245,29 @@ export const assignOperators: RequestHandler = async (req: Request, res: Respons
       conflicts = await checkOperatorConflicts(operatorIds, shift.date, tenantId, id);
     }
     
-    // Sostituisci assegnazioni esistenti
+    // Sostituisci assegnazioni esistenti con validazione same-tenant
     await prisma.$transaction(async (tx) => {
       // Rimuovi assegnazioni esistenti
       await tx.shiftOperator.deleteMany({
-        where: { shiftId: id }
+        where: { shiftId: id, tenantId }
       });
       
-      // Crea nuove assegnazioni
+      // Crea nuove assegnazioni con validazione
       if (operatorIds.length > 0) {
         if (!id) {
           throw new Error('ID turno richiesto per assegnare operatori');
         }
+        
+        // Valida che tutti gli operatori appartengano allo stesso tenant
+        const validations = operatorIds.map(operatorId => ({ model: 'User', id: operatorId }));
+        validations.push({ model: 'Shift', id });
+        await TenantValidationService.validateSameTenant(tenantId, validations);
+        
         await tx.shiftOperator.createMany({
           data: operatorIds.map(operatorId => ({
             shiftId: id,
-            userId: operatorId
+            userId: operatorId,
+            tenantId
           }))
         });
       }
@@ -1737,11 +1845,12 @@ async function createShiftException(
   shiftId: string,
   date: Date,
   exceptionType: ExceptionType,
-  newTitle?: string,
-  newNotes?: string,
-  newDate?: Date,
-  siteIds?: string[],
-  operatorIds?: string[]
+  newTitle: string | undefined,
+  newNotes: string | undefined,
+  newDate: Date | undefined,
+  siteIds: string[] | undefined,
+  operatorIds: string[] | undefined,
+  tenantId: string
 ): Promise<void> {
   const normalizedDate = new Date(date);
   normalizedDate.setUTCHours(0, 0, 0, 0);
@@ -1777,7 +1886,8 @@ async function createShiftException(
         exceptionType,
         newTitle,
         newNotes,
-        newDate: normalizedNewDate
+        newDate: normalizedNewDate,
+        tenantId
       },
       create: {
         shiftId,
@@ -1785,7 +1895,8 @@ async function createShiftException(
         exceptionType,
         newTitle,
         newNotes,
-        newDate: normalizedNewDate
+        newDate: normalizedNewDate,
+        tenantId
       }
     });
 
@@ -1793,15 +1904,21 @@ async function createShiftException(
     if (siteIds !== undefined) {
       // Rimuovi assegnazioni esistenti
       await tx.shiftExceptionSite.deleteMany({
-        where: { shiftExceptionId: exception.id }
+        where: { tenantId, shiftExceptionId: exception.id }
       });
       
-      // Aggiungi nuove assegnazioni
+      // Aggiungi nuove assegnazioni con validazione same-tenant
       if (siteIds.length > 0) {
+        // Valida che tutti i siti appartengano allo stesso tenant
+        await TenantValidationService.validateSameTenant(tenantId, 
+          siteIds.map(siteId => ({ model: 'Site' as const, id: siteId }))
+        );
+        
         await tx.shiftExceptionSite.createMany({
           data: siteIds.map(siteId => ({
             shiftExceptionId: exception.id,
-            siteId
+            siteId,
+            tenantId
           }))
         });
       }
@@ -1811,15 +1928,21 @@ async function createShiftException(
     if (operatorIds !== undefined) {
       // Rimuovi assegnazioni esistenti
       await tx.shiftExceptionOperator.deleteMany({
-        where: { shiftExceptionId: exception.id }
+        where: { tenantId, shiftExceptionId: exception.id }
       });
       
-      // Aggiungi nuove assegnazioni
+      // Aggiungi nuove assegnazioni con validazione same-tenant
       if (operatorIds.length > 0) {
+        // Valida che tutti gli operatori appartengano allo stesso tenant
+        await TenantValidationService.validateSameTenant(tenantId, 
+          operatorIds.map(operatorId => ({ model: 'User' as const, id: operatorId }))
+        );
+        
         await tx.shiftExceptionOperator.createMany({
           data: operatorIds.map(operatorId => ({
             shiftExceptionId: exception.id,
-            userId: operatorId
+            userId: operatorId,
+            tenantId
           }))
         });
       }

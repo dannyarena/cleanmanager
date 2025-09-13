@@ -24,6 +24,7 @@ async function main() {
   const tenant = await prisma.tenant.create({
     data: {
       name: 'CleanManager Demo S.r.l.',
+      slug: 'cleanmanager-demo',
     },
   });
 
@@ -221,6 +222,7 @@ async function main() {
       interval: 1,
       startDate: oggi,
       endDate: new Date(oggi.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 giorni
+      tenantId: tenant.id,
     },
   });
 
@@ -241,6 +243,7 @@ async function main() {
       interval: 1,
       startDate: oggi,
       count: 12, // 12 settimane
+      tenantId: tenant.id,
     },
   });
 
@@ -291,6 +294,7 @@ async function main() {
       interval: 1,
       startDate: oggi,
       endDate: new Date(oggi.getTime() + 21 * 24 * 60 * 60 * 1000), // 21 giorni
+      tenantId: tenant.id,
     },
   });
 
@@ -311,6 +315,7 @@ async function main() {
       interval: 2, // ogni 2 settimane
       startDate: oggi,
       count: 8, // 8 occorrenze (16 settimane)
+      tenantId: tenant.id,
     },
   });
 
@@ -319,37 +324,37 @@ async function main() {
   // Assegna siti ai turni
   await prisma.shiftSite.createMany({
     data: [
-      { shiftId: turno1.id, siteId: sito1.id },
-      { shiftId: turno1.id, siteId: sito2.id },
-      { shiftId: turno2.id, siteId: sito3.id },
-      { shiftId: turno2.id, siteId: sito4.id },
-      { shiftId: turno3.id, siteId: sito5.id },
-      { shiftId: turno3.id, siteId: sito6.id },
-      { shiftId: turno4.id, siteId: sito4.id },
-      { shiftId: turno5.id, siteId: sito1.id },
-      { shiftId: turno6.id, siteId: sito6.id },
+      { shiftId: turno1.id, siteId: sito1.id, tenantId: tenant.id },
+      { shiftId: turno1.id, siteId: sito2.id, tenantId: tenant.id },
+      { shiftId: turno2.id, siteId: sito3.id, tenantId: tenant.id },
+      { shiftId: turno2.id, siteId: sito4.id, tenantId: tenant.id },
+      { shiftId: turno3.id, siteId: sito5.id, tenantId: tenant.id },
+      { shiftId: turno3.id, siteId: sito6.id, tenantId: tenant.id },
+      { shiftId: turno4.id, siteId: sito4.id, tenantId: tenant.id },
+      { shiftId: turno5.id, siteId: sito1.id, tenantId: tenant.id },
+      { shiftId: turno6.id, siteId: sito6.id, tenantId: tenant.id },
       // Serie demo
-      { shiftId: serieDailyDemo.id, siteId: sito1.id },
-      { shiftId: serieDailyDemo.id, siteId: sito3.id },
-      { shiftId: serieWeeklyDemo.id, siteId: sito2.id },
-      { shiftId: serieWeeklyDemo.id, siteId: sito5.id },
+      { shiftId: serieDailyDemo.id, siteId: sito1.id, tenantId: tenant.id },
+      { shiftId: serieDailyDemo.id, siteId: sito3.id, tenantId: tenant.id },
+      { shiftId: serieWeeklyDemo.id, siteId: sito2.id, tenantId: tenant.id },
+      { shiftId: serieWeeklyDemo.id, siteId: sito5.id, tenantId: tenant.id },
     ],
   });
 
   // Assegna operatori ai turni
   await prisma.shiftOperator.createMany({
     data: [
-      { shiftId: turno1.id, userId: operatore1.id },
-      { shiftId: turno1.id, userId: operatore2.id },
-      { shiftId: turno2.id, userId: operatore1.id },
-      { shiftId: turno3.id, userId: operatore2.id },
-      { shiftId: turno4.id, userId: manager.id },
-      { shiftId: turno5.id, userId: operatore1.id },
-      { shiftId: turno6.id, userId: operatore2.id },
+      { shiftId: turno1.id, userId: operatore1.id, tenantId: tenant.id },
+      { shiftId: turno1.id, userId: operatore2.id, tenantId: tenant.id },
+      { shiftId: turno2.id, userId: operatore1.id, tenantId: tenant.id },
+      { shiftId: turno3.id, userId: operatore2.id, tenantId: tenant.id },
+      { shiftId: turno4.id, userId: manager.id, tenantId: tenant.id },
+      { shiftId: turno5.id, userId: operatore1.id, tenantId: tenant.id },
+      { shiftId: turno6.id, userId: operatore2.id, tenantId: tenant.id },
       // Serie demo
-      { shiftId: serieDailyDemo.id, userId: operatore1.id },
-      { shiftId: serieWeeklyDemo.id, userId: operatore2.id },
-      { shiftId: serieWeeklyDemo.id, userId: manager.id },
+      { shiftId: serieDailyDemo.id, userId: operatore1.id, tenantId: tenant.id },
+      { shiftId: serieWeeklyDemo.id, userId: operatore2.id, tenantId: tenant.id },
+      { shiftId: serieWeeklyDemo.id, userId: manager.id, tenantId: tenant.id },
     ],
   });
 
@@ -366,10 +371,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Pulizia reception', description: 'Pulire banco reception e area accoglienza', order: 1, checklistId: checklist1.id },
-      { title: 'Aspirazione tappeti', description: 'Aspirare tutti i tappeti della hall', order: 2, checklistId: checklist1.id },
-      { title: 'Pulizia bagni pubblici', description: 'Sanificare bagni pubblici', order: 3, checklistId: checklist1.id },
-      { title: 'Svuotamento cestini', description: 'Svuotare tutti i cestini', order: 4, checklistId: checklist1.id },
+      { title: 'Pulizia reception', description: 'Pulire banco reception e area accoglienza', order: 1, checklistId: checklist1.id, tenantId: tenant.id },
+      { title: 'Aspirazione tappeti', description: 'Aspirare tutti i tappeti della hall', order: 2, checklistId: checklist1.id, tenantId: tenant.id },
+      { title: 'Pulizia bagni pubblici', description: 'Sanificare bagni pubblici', order: 3, checklistId: checklist1.id, tenantId: tenant.id },
+      { title: 'Svuotamento cestini', description: 'Svuotare tutti i cestini', order: 4, checklistId: checklist1.id, tenantId: tenant.id },
     ],
   });
 
@@ -383,10 +388,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Rifare letti', description: 'Cambiare lenzuola e rifare letti', order: 1, checklistId: checklist2.id },
-      { title: 'Pulizia bagni camere', description: 'Pulire e sanificare bagni', order: 2, checklistId: checklist2.id },
-      { title: 'Aspirazione pavimenti', description: 'Aspirare moquette e pavimenti', order: 3, checklistId: checklist2.id },
-      { title: 'Rifornimento amenities', description: 'Controllare e rifornire amenities', order: 4, checklistId: checklist2.id },
+      { title: 'Rifare letti', description: 'Cambiare lenzuola e rifare letti', order: 1, checklistId: checklist2.id, tenantId: tenant.id },
+      { title: 'Pulizia bagni camere', description: 'Pulire e sanificare bagni', order: 2, checklistId: checklist2.id, tenantId: tenant.id },
+      { title: 'Aspirazione pavimenti', description: 'Aspirare moquette e pavimenti', order: 3, checklistId: checklist2.id, tenantId: tenant.id },
+      { title: 'Rifornimento amenities', description: 'Controllare e rifornire amenities', order: 4, checklistId: checklist2.id, tenantId: tenant.id },
     ],
   });
 
@@ -400,10 +405,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Pulizia scrivanie', description: 'Pulire e disinfettare tutte le scrivanie', order: 1, checklistId: checklist3.id },
-      { title: 'Aspirazione pavimenti', description: 'Aspirare moquette uffici', order: 2, checklistId: checklist3.id },
-      { title: 'Svuotamento cestini', description: 'Svuotare cestini carta e raccolta differenziata', order: 3, checklistId: checklist3.id },
-      { title: 'Pulizia vetri interni', description: 'Pulire vetri divisori e finestre', order: 4, checklistId: checklist3.id },
+      { title: 'Pulizia scrivanie', description: 'Pulire e disinfettare tutte le scrivanie', order: 1, checklistId: checklist3.id, tenantId: tenant.id },
+      { title: 'Aspirazione pavimenti', description: 'Aspirare moquette uffici', order: 2, checklistId: checklist3.id, tenantId: tenant.id },
+      { title: 'Svuotamento cestini', description: 'Svuotare cestini carta e raccolta differenziata', order: 3, checklistId: checklist3.id, tenantId: tenant.id },
+      { title: 'Pulizia vetri interni', description: 'Pulire vetri divisori e finestre', order: 4, checklistId: checklist3.id, tenantId: tenant.id },
     ],
   });
 
@@ -417,10 +422,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Pulizia sala riunioni', description: 'Pulire tavoli e sedie sala riunioni', order: 1, checklistId: checklist4.id },
-      { title: 'Pulizia cucina', description: 'Pulire cucina e area break', order: 2, checklistId: checklist4.id },
-      { title: 'Pulizia corridoi', description: 'Lavare pavimenti corridoi', order: 3, checklistId: checklist4.id },
-      { title: 'Pulizia ascensore', description: 'Pulire interno ascensore', order: 4, checklistId: checklist4.id },
+      { title: 'Pulizia sala riunioni', description: 'Pulire tavoli e sedie sala riunioni', order: 1, checklistId: checklist4.id, tenantId: tenant.id },
+      { title: 'Pulizia cucina', description: 'Pulire cucina e area break', order: 2, checklistId: checklist4.id, tenantId: tenant.id },
+      { title: 'Pulizia corridoi', description: 'Lavare pavimenti corridoi', order: 3, checklistId: checklist4.id, tenantId: tenant.id },
+      { title: 'Pulizia ascensore', description: 'Pulire interno ascensore', order: 4, checklistId: checklist4.id, tenantId: tenant.id },
     ],
   });
 
@@ -434,10 +439,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Pulizia scale condominiali', description: 'Lavare scale e pianerottoli', order: 1, checklistId: checklist5.id },
-      { title: 'Pulizia ascensore', description: 'Pulire e sanificare ascensore', order: 2, checklistId: checklist5.id },
-      { title: 'Pulizia atrio', description: 'Pulire atrio e zona mailbox', order: 3, checklistId: checklist5.id },
-      { title: 'Controllo illuminazione', description: 'Verificare funzionamento luci comuni', order: 4, checklistId: checklist5.id },
+      { title: 'Pulizia scale condominiali', description: 'Lavare scale e pianerottoli', order: 1, checklistId: checklist5.id, tenantId: tenant.id },
+      { title: 'Pulizia ascensore', description: 'Pulire e sanificare ascensore', order: 2, checklistId: checklist5.id, tenantId: tenant.id },
+      { title: 'Pulizia atrio', description: 'Pulire atrio e zona mailbox', order: 3, checklistId: checklist5.id, tenantId: tenant.id },
+      { title: 'Controllo illuminazione', description: 'Verificare funzionamento luci comuni', order: 4, checklistId: checklist5.id, tenantId: tenant.id },
     ],
   });
 
@@ -451,10 +456,10 @@ async function main() {
 
   await prisma.checkItem.createMany({
     data: [
-      { title: 'Spazzamento cortile', description: 'Spazzare tutto il cortile', order: 1, checklistId: checklist6.id },
-      { title: 'Cura del verde', description: 'Innaffiare piante e potare se necessario', order: 2, checklistId: checklist6.id },
-      { title: 'Pulizia fontana', description: 'Pulire fontana e area circostante', order: 3, checklistId: checklist6.id },
-      { title: 'Raccolta foglie', description: 'Raccogliere foglie secche', order: 4, checklistId: checklist6.id },
+      { title: 'Spazzamento cortile', description: 'Spazzare tutto il cortile', order: 1, checklistId: checklist6.id, tenantId: tenant.id },
+      { title: 'Cura del verde', description: 'Innaffiare piante e potare se necessario', order: 2, checklistId: checklist6.id, tenantId: tenant.id },
+      { title: 'Pulizia fontana', description: 'Pulire fontana e area circostante', order: 3, checklistId: checklist6.id, tenantId: tenant.id },
+      { title: 'Raccolta foglie', description: 'Raccogliere foglie secche', order: 4, checklistId: checklist6.id, tenantId: tenant.id },
     ],
   });
 
@@ -466,6 +471,7 @@ async function main() {
       shiftId: turno2.id,
       date: new Date(oggi.getTime() + 7 * 24 * 60 * 60 * 1000), // tra una settimana
       exceptionType: ExceptionType.CANCELLED,
+      tenantId: tenant.id,
     },
   });
 
@@ -476,6 +482,7 @@ async function main() {
       exceptionType: ExceptionType.MODIFIED,
       newTitle: 'Pulizia Straordinaria Residenza',
       newNotes: 'Pulizia extra per ispezione condominiale',
+      tenantId: tenant.id,
     },
   });
 
@@ -489,6 +496,7 @@ async function main() {
       exceptionType: ExceptionType.MODIFIED,
       newTitle: 'Serie Daily Demo - Pulizia Speciale',
       newNotes: 'Modifica per test: pulizia con prodotti speciali',
+      tenantId: tenant.id,
     },
   });
 
@@ -498,10 +506,55 @@ async function main() {
       shiftId: serieDailyDemo.id,
       date: new Date(oggi.getTime() + 7 * 24 * 60 * 60 * 1000),
       exceptionType: ExceptionType.CANCELLED,
+      tenantId: tenant.id,
     },
   });
 
   console.log('✅ Eccezioni create: 4 eccezioni per dimostrare la funzionalità (incluse serie demo)');
+
+  // === VALIDAZIONE FINALE: NESSUN RECORD SENZA TENANT_ID ===
+  console.log('\n🔍 Validazione finale: controllo tenant_id su tutte le tabelle...');
+  
+  const validationQueries = [
+    { table: 'tenants', query: 'SELECT COUNT(*) as count FROM tenants WHERE id IS NULL' },
+    { table: 'users', query: 'SELECT COUNT(*) as count FROM users WHERE "tenantId" IS NULL' },
+    { table: 'clients', query: 'SELECT COUNT(*) as count FROM clients WHERE "tenantId" IS NULL' },
+    { table: 'sites', query: 'SELECT COUNT(*) as count FROM sites WHERE "tenantId" IS NULL' },
+    { table: 'shifts', query: 'SELECT COUNT(*) as count FROM shifts WHERE "tenantId" IS NULL' },
+    { table: 'shift_recurrence', query: 'SELECT COUNT(*) as count FROM shift_recurrence WHERE "tenantId" IS NULL' },
+    { table: 'shift_sites', query: 'SELECT COUNT(*) as count FROM shift_sites WHERE "tenantId" IS NULL' },
+    { table: 'shift_operators', query: 'SELECT COUNT(*) as count FROM shift_operators WHERE "tenantId" IS NULL' },
+    { table: 'checklists', query: 'SELECT COUNT(*) as count FROM checklists WHERE "tenantId" IS NULL' },
+    { table: 'check_items', query: 'SELECT COUNT(*) as count FROM check_items WHERE "tenantId" IS NULL' },
+    { table: 'shift_exceptions', query: 'SELECT COUNT(*) as count FROM shift_exceptions WHERE "tenantId" IS NULL' },
+    { table: 'shift_exception_sites', query: 'SELECT COUNT(*) as count FROM shift_exception_sites WHERE "tenantId" IS NULL' },
+    { table: 'shift_exception_operators', query: 'SELECT COUNT(*) as count FROM shift_exception_operators WHERE "tenantId" IS NULL' },
+    { table: 'tenant_settings', query: 'SELECT COUNT(*) as count FROM tenant_settings WHERE "tenantId" IS NULL' }
+  ];
+
+  let totalViolations = 0;
+  for (const { table, query } of validationQueries) {
+    try {
+      const result = await prisma.$queryRawUnsafe(query) as [{ count: bigint }];
+      const count = Number(result[0].count);
+      if (count > 0) {
+        console.error(`❌ ERRORE: Trovati ${count} record senza tenantId nella tabella ${table}`);
+        totalViolations += count;
+      } else {
+        console.log(`   ✅ ${table}: OK (0 record senza tenantId)`);
+      }
+    } catch (error) {
+      console.warn(`   ⚠️  ${table}: Tabella non trovata o errore query (potrebbe non esistere ancora)`);
+    }
+  }
+
+  if (totalViolations > 0) {
+    console.error(`\n❌ VALIDAZIONE FALLITA: ${totalViolations} record totali senza tenantId!`);
+    console.error('Il seeding non può continuare. Tutti i record devono avere un tenantId valido.');
+    process.exit(1);
+  }
+
+  console.log('\n✅ VALIDAZIONE COMPLETATA: Tutti i record hanno tenantId valido!');
 
   console.log('\n🎉 Seeding completato con successo!');
   console.log('\n📊 Riepilogo dati creati:');

@@ -3,6 +3,9 @@ import { prisma } from "../lib/prisma";
 import { getTenantId } from "../auth/authContext";
 import { Theme, RecurrenceFrequency } from "@prisma/client";
 
+// Funzione helper per normalizzare i valori enum
+const toUpper = (v: unknown) => typeof v === 'string' ? v.toUpperCase() : v;
+
 /**
  * GET /settings - Restituisce le impostazioni del tenant corrente
  */
@@ -78,6 +81,10 @@ export const updateSettings: RequestHandler = async (req: Request, res: Response
       emailEnabled
     } = req.body;
 
+    // Normalizza gli enum
+    const normTheme = theme !== undefined ? toUpper(theme) : undefined;
+    const normFreq = recurrenceDefaultFrequency !== undefined ? toUpper(recurrenceDefaultFrequency) : undefined;
+
     // Validazioni minime
     const updateData: any = {};
 
@@ -95,30 +102,30 @@ export const updateSettings: RequestHandler = async (req: Request, res: Response
       updateData.primaryColor = primaryColor;
     }
 
-    if (theme !== undefined) {
-      if (!Object.values(Theme).includes(theme)) {
+    if (normTheme !== undefined) {
+      if (!Object.values(Theme).includes(normTheme as Theme)) {
         return res.status(400).json({ error: "Il tema deve essere LIGHT o DARK" });
       }
-      updateData.theme = theme;
+      updateData.theme = normTheme;
     }
 
     if (workingDays !== undefined) {
-      if (!Array.isArray(workingDays) || !workingDays.every(day => Number.isInteger(day) && day >= 1 && day <= 7)) {
-        return res.status(400).json({ error: "I giorni lavorativi devono essere un array di numeri da 1 a 7" });
+      if (!Array.isArray(workingDays) || !workingDays.every(d => Number.isInteger(d) && d >= 1 && d <= 7)) {
+        return res.status(400).json({ error: "I giorni lavorativi devono essere un array di interi 1–7" });
       }
-      updateData.workingDays = workingDays;
+      updateData.workingDays = Array.from(new Set(workingDays)).sort((a,b)=>a-b);
     }
 
-    if (recurrenceDefaultFrequency !== undefined) {
-      if (!Object.values(RecurrenceFrequency).includes(recurrenceDefaultFrequency)) {
+    if (normFreq !== undefined) {
+      if (!Object.values(RecurrenceFrequency).includes(normFreq as RecurrenceFrequency)) {
         return res.status(400).json({ error: "La frequenza di ricorrenza deve essere DAILY o WEEKLY" });
       }
-      updateData.recurrenceDefaultFrequency = recurrenceDefaultFrequency;
+      updateData.recurrenceDefaultFrequency = normFreq;
     }
 
     if (recurrenceDefaultInterval !== undefined) {
       if (!Number.isInteger(recurrenceDefaultInterval) || recurrenceDefaultInterval < 1) {
-        return res.status(400).json({ error: "L'intervallo di ricorrenza deve essere un numero intero maggiore di 0" });
+        return res.status(400).json({ error: "L'intervallo deve essere un intero ≥ 1" });
       }
       updateData.recurrenceDefaultInterval = recurrenceDefaultInterval;
     }
