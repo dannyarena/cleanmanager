@@ -173,7 +173,7 @@ export function Dashboard() {
       {/* Welcome message */}
       <div className="bg-card rounded-lg shadow-sm p-6 border border-border">
         <h2 className="text-2xl font-bold text-card-foreground mb-2">
-          Benvenuto {user?.firstName ?? 'CleanManager'}
+          Ciao {user?.firstName ?? 'CleanManager'}
         </h2>
         <p className="text-muted">
           Gestisci i tuoi turni di pulizia, clienti e operatori in modo semplice ed efficace.
